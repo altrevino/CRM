@@ -9,6 +9,24 @@
     @endphp
     <x-modal :title="$title" :subtitle="$subtitle">
         <form id="quote-form" wire:submit="save" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            @if ($mode === 'create')
+                <details class="rounded-xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200 sm:col-span-2" @if ($folio || $errors->has('folio') || $errors->has('version')) open @endif>
+                    <summary class="cursor-pointer text-sm font-medium text-slate-700">Número de cotización: <span class="text-slate-500">{{ $folio ? \App\Models\Quote::formatNumber((int) $folio, max(1, (int) $version)) : 'automático ('.$this->nextNumber.')' }}</span></summary>
+                    <p class="mt-2 text-xs text-slate-500">Úsalo para capturar cotizaciones de tu sistema anterior con su número original. Déjalo vacío para usar el consecutivo; los nuevos números continuarán después del folio más alto registrado.</p>
+                    <div class="mt-3 flex items-start gap-2">
+                        <x-field label="Folio" for="qf-folio" error="folio" class="flex-1">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-sm text-slate-500">COT-</span>
+                                <input id="qf-folio" type="number" min="1" step="1" wire:model.live.debounce.500ms="folio" class="input" placeholder="{{ \Illuminate\Support\Str::after($this->nextNumber, 'COT-') }}">
+                            </div>
+                        </x-field>
+                        <x-field label="Versión" for="qf-version" error="version" class="w-24">
+                            <input id="qf-version" type="number" min="1" max="99" step="1" wire:model.live.debounce.500ms="version" class="input">
+                        </x-field>
+                    </div>
+                </details>
+            @endif
+
             <x-field label="Fecha" for="qf-date" error="issued_at" required>
                 <input id="qf-date" type="date" wire:model="issued_at" class="input @error('issued_at') input-error @enderror" required>
             </x-field>

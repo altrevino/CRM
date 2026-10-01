@@ -225,6 +225,9 @@
                                 <button type="button" x-on:click="$dispatch('open-quote-form', { opportunityId: '{{ $o->id }}', quoteId: '{{ $quote->id }}', mode: 'edit' })" class="btn-ghost btn-sm"><x-icon name="pencil" class="size-4" /> Editar</button>
                             @endcan
                             <button type="button" x-on:click="$dispatch('open-quote-form', { opportunityId: '{{ $o->id }}', quoteId: '{{ $quote->id }}', mode: 'version' })" class="btn-ghost btn-sm"><x-icon name="refresh" class="size-4" /> Nueva versión</button>
+                            @can('adjust', $quote)
+                                <button type="button" x-on:click="$dispatch('open-quote-adjust', { quoteId: '{{ $quote->id }}' })" class="btn-ghost btn-sm" title="Cambiar número o fechas (migración)"><x-icon name="tag" class="size-4" /> Número y fechas</button>
+                            @endcan
                             @can('delete', $quote)
                                 <button type="button" wire:click="deleteQuote('{{ $quote->id }}')" wire:confirm="¿Eliminar {{ $quote->number }}? Quedará registrado en el historial." class="btn-ghost btn-sm text-rose-600"><x-icon name="trash" class="size-4" /></button>
                             @endcan

@@ -12,4 +12,10 @@ class QuotePolicy extends RecordPolicy
     {
         return parent::update($user, $quote) && $quote->status->isEditable();
     }
+
+    /** Ajustar número y fechas (migración) se permite en cualquier estado. */
+    public function adjust(User $user, Model $quote): bool
+    {
+        return parent::update($user, $quote);
+    }
 }

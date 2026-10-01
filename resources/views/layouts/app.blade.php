@@ -94,6 +94,7 @@
     <livewire:forms.ranch-form />
     <livewire:forms.opportunity-form />
     <livewire:forms.quote-form />
+    <livewire:forms.quote-adjust-form />
     <livewire:forms.payment-form />
     <livewire:forms.task-form />
 

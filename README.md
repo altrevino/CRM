@@ -179,6 +179,13 @@ DB_CONNECTION=mysql DB_DATABASE=espectro_test DB_USERNAME=root DB_PASSWORD=... p
 * **Exportar**: Clientes, Ranchos, Cotizaciones, Pagos y Censos programados exportan CSV (se abre directo en Excel) respetando los filtros activos.
 * **Buscador global** (tecla `/`): clientes, teléfonos, ranchos, municipios y cotizaciones.
 
+## Migrar cotizaciones desde otro sistema
+
+* **Al crear** una cotización, abre «Número de cotización» y captura el folio original (por ejemplo `145` para `COT-145`) y su versión. Vacío = consecutivo automático.
+* **Después**, en la cotización usa «Número y fechas» para corregir el número o fijar las fechas reales de envío y aceptación. Funciona aunque la cotización ya esté aceptada y no modifica montos ni estado.
+* Los números nuevos continúan después del folio más alto registrado. Si quieres que arranquen en otro número, ajusta «Folio inicial de cotizaciones» en Configuración.
+* Captura la fecha de aceptación real de las cotizaciones aceptadas históricas; si no, todas aparecerán como ventas del mes en que las registraste.
+
 ## Estructura del código
 
 ```

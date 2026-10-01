@@ -43,6 +43,11 @@ class QuoteForm extends Component
 
     public string $notes = '';
 
+    /** Número manual opcional (migración). Vacío = consecutivo automático. */
+    public ?string $folio = null;
+
+    public ?string $version = '1';
+
     #[On('open-quote-form')]
     public function open(string $opportunityId, ?string $quoteId = null, string $mode = 'create'): void
     {
@@ -98,6 +103,12 @@ class QuoteForm extends Component
     }
 
     #[Computed]
+    public function nextNumber(): string
+    {
+        return Quote::formatNumber(Opportunity::nextQuoteFolio(), 1);
+    }
+
+    #[Computed]
     public function baseQuote(): ?Quote
     {
         return $this->quoteId ? Quote::find($this->quoteId) : null;
@@ -124,6 +135,8 @@ class QuoteForm extends Component
             'apply_vat' => ['required', 'in:si,no'],
             'vat_rate' => ['required_if:apply_vat,si', 'nullable', 'numeric', 'min:0', 'max:100'],
             'notes' => ['nullable', 'string', 'max:5000'],
+            'folio' => ['nullable', 'integer', 'min:1', 'max:9999999'],
+            'version' => ['nullable', 'integer', 'min:1', 'max:99'],
         ];
     }
 
@@ -133,6 +146,7 @@ class QuoteForm extends Component
             'apply_vat.required' => 'Indica si la operación es Con IVA o Sin IVA.',
             'hectares.gt' => 'Las hectáreas deben ser mayores a 0.',
             'vat_rate.required_if' => 'Captura el porcentaje de IVA.',
+            'folio.integer' => 'El folio debe ser solo el número, por ejemplo 145 para COT-145.',
         ];
     }
 
@@ -141,6 +155,9 @@ class QuoteForm extends Component
         $data = $this->validate();
         $data['apply_vat'] = $data['apply_vat'] === 'si';
         $data['logistics_amount'] = $data['logistics_amount'] ?: 0;
+        if ($this->mode !== 'create') {
+            unset($data['folio'], $data['version']);
+        }
 
         $opportunity = Opportunity::findOrFail($this->opportunityId);
 

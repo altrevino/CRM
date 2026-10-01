@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Enums\ActivityEvent;
 use App\Enums\PipelineStage;
 use App\Enums\QuoteStatus;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\Setting;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -14,14 +16,24 @@ class QuoteService
 {
     public function __construct(private OpportunityService $opportunities) {}
 
-    /** Crea una cotización nueva (folio nuevo, versión 1). */
+    /**
+     * Crea una cotización nueva. Sin folio usa el consecutivo; con folio (migración desde
+     * otro sistema) respeta el número capturado si está disponible.
+     */
     public function create(Opportunity $opportunity, array $data): Quote
     {
-        return DB::transaction(function () use ($opportunity, $data) {
+        $folio = filled($data['folio'] ?? null) ? (int) $data['folio'] : null;
+        $version = filled($data['version'] ?? null) ? (int) $data['version'] : 1;
+
+        if ($folio !== null) {
+            $this->assertNumberAvailable($opportunity->id, $folio, $version);
+        }
+
+        return DB::transaction(function () use ($opportunity, $data, $folio, $version) {
             $quote = new Quote($this->payload($data));
             $quote->opportunity_id = $opportunity->id;
-            $quote->folio = Opportunity::nextQuoteFolio();
-            $quote->version = 1;
+            $quote->folio = $folio ?? Opportunity::nextQuoteFolio();
+            $quote->version = $folio !== null ? $version : 1;
             $quote->status = QuoteStatus::Draft;
             $quote->save();
 
@@ -100,6 +112,83 @@ class QuoteService
 
             $this->opportunities->advanceTo($opportunity, PipelineStage::PendingDeposit);
         });
+    }
+
+    /**
+     * Ajuste de datos históricos (migración): número y fechas de envío/aceptación.
+     * Si cambia el folio, todas las versiones de esa cotización lo adoptan.
+     *
+     * @param  array{folio: int|string, version: int|string, sent_at?: ?string, accepted_at?: ?string}  $data
+     */
+    public function adjust(Quote $quote, array $data): void
+    {
+        $folio = (int) $data['folio'];
+        $version = (int) $data['version'];
+        $oldNumber = $quote->number;
+
+        $family = $folio !== $quote->folio
+            ? Quote::withTrashed()->where('opportunity_id', $quote->opportunity_id)->where('folio', $quote->folio)->get()
+            : collect([$quote]);
+        $ids = $family->pluck('id')->all();
+
+        foreach ($family as $member) {
+            $this->assertNumberAvailable($quote->opportunity_id, $folio, $member->is($quote) ? $version : $member->version, $ids);
+        }
+        if ($family->contains(fn (Quote $m) => ! $m->is($quote) && $m->version === $version)) {
+            throw ValidationException::withMessages(['version' => "Ya existe la versión {$version} de esta cotización."]);
+        }
+
+        DB::transaction(function () use ($quote, $family, $folio, $version, $data, $oldNumber) {
+            foreach ($family as $member) {
+                $member->folio = $folio;
+                if ($member->is($quote)) {
+                    $member->version = $version;
+                }
+                $member->save();
+            }
+
+            $changes = [];
+            if ($quote->number !== $oldNumber) {
+                $changes[] = "número {$oldNumber} → {$quote->number}".($family->count() > 1 ? ' (y sus otras versiones)' : '');
+            }
+
+            foreach (['sent_at' => 'envío', 'accepted_at' => 'aceptación'] as $field => $label) {
+                if (! array_key_exists($field, $data)) {
+                    continue;
+                }
+                $new = filled($data[$field]) ? Carbon::parse($data[$field])->setTime(12, 0) : null;
+                if ($quote->{$field}?->toDateString() !== $new?->toDateString()) {
+                    $changes[] = "fecha de {$label} ".fecha($quote->{$field}).' → '.fecha($new);
+                    $quote->{$field} = $new;
+                }
+            }
+            $quote->save();
+
+            if ($changes) {
+                ActivityLogger::log(ActivityEvent::QuoteUpdated, $quote, "{$quote->number} ajustada: ".implode('; ', $changes));
+            }
+        });
+    }
+
+    /** Valida que COT-folio[ Vn] esté libre y que el folio no pertenezca a otro servicio. */
+    public function assertNumberAvailable(string $opportunityId, int $folio, int $version, array $ignoreIds = []): void
+    {
+        $number = Quote::formatNumber($folio, $version);
+
+        $taken = Quote::withTrashed()->where('number', $number)->whereNotIn('id', $ignoreIds)->first();
+        if ($taken) {
+            throw ValidationException::withMessages([
+                'folio' => "{$number} ya existe".($taken->trashed() ? ' en una cotización eliminada' : '').'.',
+            ]);
+        }
+
+        $otherService = Quote::withTrashed()->where('folio', $folio)
+            ->where('opportunity_id', '!=', $opportunityId)
+            ->whereNotIn('id', $ignoreIds)
+            ->exists();
+        if ($otherService) {
+            throw ValidationException::withMessages(['folio' => "El folio COT-{$folio} ya pertenece a otro servicio."]);
+        }
     }
 
     public function reject(Quote $quote): void

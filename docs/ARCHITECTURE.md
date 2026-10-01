@@ -86,6 +86,7 @@ Cliente 1 ── N Rancho 1 ── N Oportunidad 1 ── N Cotización 1 ──
    * `apply_vat` **no tiene valor por defecto implícito**: el formulario obliga a elegir “Con IVA” o “Sin IVA”.
    * El % de IVA se copia de Configuración al crear la cotización y se guarda en la propia cotización (histórico).
 5. Versiones: “Nueva versión” crea `COT-145 V2` con los mismos datos; las versiones anteriores en Borrador/Enviada pasan a `Reemplazada`.
+5b. Numeración: por defecto el folio es consecutivo (el mayor entre `folio más alto + 1` y el "Folio inicial" de Configuración). Para migrar desde otro sistema se puede capturar el folio y la versión al crear, o ajustarlos después con "Número y fechas" (`QuoteService::adjust`), en cualquier estado. Reglas: el número `COT-folio[ Vn]` es único (incluye eliminadas), un folio pertenece a un solo servicio, y al cambiar el folio todas sus versiones lo adoptan. El mismo ajuste permite fijar las fechas históricas de envío y aceptación (la de aceptación define el mes en "Ventas por mes"). Todo queda en el historial.
 6. Las cotizaciones aceptadas no se editan; se crea una nueva versión.
 7. Saldo = Total de la cotización aceptada − Σ pagos no eliminados de la oportunidad. Nunca se guarda: se calcula siempre.
 8. Pagos: monto > 0, múltiples parciales. Si existe cotización aceptada, el pago se liga a ella.
