@@ -20,7 +20,7 @@
         @endif
     </div>
 
-    <div class="-mx-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+    <div class="-mx-4 overflow-x-auto px-4 pb-4 sm:-mx-5 sm:px-5">
         <div class="flex min-w-max gap-4">
             @foreach ($this->columns as $column)
                 @php $stage = $column['stage']; @endphp

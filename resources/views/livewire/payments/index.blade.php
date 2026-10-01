@@ -6,17 +6,14 @@
     </x-page-header>
 
     <div class="card">
-        <div class="grid grid-cols-1 gap-3 border-b border-slate-100 p-4 sm:grid-cols-2 lg:grid-cols-5">
-            <div class="relative lg:col-span-2">
+        <div class="flex flex-wrap items-center gap-2 border-b border-slate-100 p-4">
+            <div class="relative w-full sm:min-w-56 sm:flex-1 xl:max-w-xs">
                 <x-icon name="search" class="pointer-events-none absolute top-2.5 left-3 size-4 text-slate-400" />
                 <input type="search" wire:model.live.debounce.300ms="search" class="input pl-9" placeholder="Cliente, rancho o referencia…">
             </div>
-            <x-select wire:model.live="client" :options="$clients" placeholder="Todos los clientes" />
-            <x-select wire:model.live="method" :options="$methods" placeholder="Todas las formas de pago" />
-            <div class="flex items-center gap-2">
-                <input type="date" wire:model.live="dateFrom" class="input" aria-label="Desde" title="Desde">
-                <input type="date" wire:model.live="dateTo" class="input" aria-label="Hasta" title="Hasta">
-            </div>
+            <x-select wire:model.live="client" :options="$clients" placeholder="Cliente" class="w-full sm:w-48" aria-label="Cliente" />
+            <x-select wire:model.live="method" :options="$methods" placeholder="Forma de pago" class="w-full sm:w-44" aria-label="Forma de pago" />
+            @include('livewire.partials.date-range')
         </div>
         <div class="flex items-center justify-between border-b border-slate-100 px-4 py-2.5 text-sm">
             <span class="text-slate-500">Total filtrado: <span class="font-semibold text-slate-900 tabular-nums">{{ money($total) }}</span></span>
@@ -32,24 +29,24 @@
                         <x-sort-th field="paid_at" label="Fecha" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sort-th field="client_name" label="Cliente" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sort-th field="ranch_name" label="Rancho" :sort-field="$sortField" :sort-direction="$sortDirection" />
-                        <th class="table-th">Cotización</th>
+                        <th class="table-th hidden xl:table-cell">Cotización</th>
                         <th class="table-th">Forma de pago</th>
-                        <th class="table-th">Referencia</th>
+                        <th class="table-th hidden xl:table-cell">Referencia</th>
                         <x-sort-th field="amount" label="Monto" :sort-field="$sortField" :sort-direction="$sortDirection" align="right" />
-                        <th class="table-th">Registró</th>
+                        <th class="table-th hidden 2xl:table-cell">Registró</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($payments as $payment)
                         <tr wire:key="p-{{ $payment->id }}" class="hover:bg-slate-50/70">
                             <td class="table-td">{{ fecha($payment->paid_at) }}</td>
-                            <td class="table-td"><a href="{{ route('clients.show', $payment->opportunity->ranch->client_id) }}" wire:navigate class="hover:text-brand-700">{{ $payment->client_name }}</a></td>
+                            <td class="table-td min-w-40 whitespace-normal"><a href="{{ route('clients.show', $payment->opportunity->ranch->client_id) }}" wire:navigate class="hover:text-brand-700">{{ $payment->client_name }}</a></td>
                             <td class="table-td"><a href="{{ route('opportunities.show', [$payment->opportunity_id, 'tab' => 'pagos']) }}" wire:navigate class="font-medium hover:text-brand-700">{{ $payment->ranch_name }}</a></td>
-                            <td class="table-td">{{ $payment->quote?->number ?? '—' }}</td>
+                            <td class="table-td hidden xl:table-cell">{{ $payment->quote?->number ?? '—' }}</td>
                             <td class="table-td">{{ $payment->method->name }}</td>
-                            <td class="table-td">{{ $payment->reference ?: '—' }}</td>
+                            <td class="table-td hidden xl:table-cell">{{ $payment->reference ?: '—' }}</td>
                             <td class="table-td text-right font-semibold tabular-nums text-slate-900">{{ money($payment->amount) }}</td>
-                            <td class="table-td text-slate-500">{{ $payment->creator->name }}</td>
+                            <td class="table-td hidden text-slate-500 2xl:table-cell">{{ $payment->creator->name }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="8"><x-empty icon="cash" title="No hay pagos con estos filtros" /></td></tr>

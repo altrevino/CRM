@@ -6,6 +6,9 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Menú lateral plegado (clase en <html>, se conserva al navegar) */
+@custom-variant collapsed (&:where(.sidebar-collapsed, .sidebar-collapsed *));
+
 @theme {
     --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
@@ -83,11 +86,11 @@
     }
 
     .table-th {
-        @apply px-4 py-3 text-left text-xs font-semibold tracking-wide whitespace-nowrap text-slate-500 uppercase;
+        @apply px-2.5 py-3 text-left align-bottom text-[11px] leading-tight font-semibold tracking-wide text-slate-500 uppercase;
     }
 
     .table-td {
-        @apply px-4 py-3 text-sm whitespace-nowrap text-slate-700;
+        @apply px-2.5 py-2.5 text-sm whitespace-nowrap text-slate-700;
     }
 
     .link {

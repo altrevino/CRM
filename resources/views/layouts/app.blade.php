@@ -7,6 +7,9 @@
     <meta name="theme-color" content="#1f625b">
     <title>{{ isset($title) ? $title.' · ' : '' }}{{ config('app.name') }}</title>
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+    <script>
+        try { if (localStorage.getItem('sidebar-collapsed') === '1') document.documentElement.classList.add('sidebar-collapsed'); } catch (e) {}
+    </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
@@ -38,14 +41,14 @@
     </div>
 
     {{-- Sidebar escritorio --}}
-    <aside class="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200 bg-white lg:flex">
+    <aside class="fixed inset-y-0 left-0 z-30 hidden w-56 flex-col border-r border-slate-200 bg-white transition-[width] duration-200 lg:flex lg:collapsed:w-16">
         @include('layouts.partials.sidebar')
     </aside>
 
-    <div class="lg:pl-64">
+    <div class="transition-[padding] duration-200 lg:pl-56 lg:collapsed:pl-16">
         {{-- Barra superior --}}
         <header class="sticky top-0 z-20 border-b border-slate-200/80 bg-white/85 backdrop-blur">
-            <div class="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
+            <div class="flex h-16 items-center gap-3 px-4 sm:px-5">
                 <button type="button" class="btn-ghost -ml-2 p-2 lg:hidden" x-on:click="sidebar = true" aria-label="Abrir menú">
                     <x-icon name="menu" />
                 </button>
@@ -59,10 +62,8 @@
             </div>
         </header>
 
-        <main class="px-4 pt-6 pb-28 sm:px-6 lg:px-8 lg:pb-12">
-            <div class="mx-auto max-w-7xl">
-                {{ $slot }}
-            </div>
+        <main class="min-w-0 px-4 pt-5 pb-28 sm:px-5 lg:pb-10">
+            {{ $slot }}
         </main>
     </div>
 

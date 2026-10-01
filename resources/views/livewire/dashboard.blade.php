@@ -4,17 +4,19 @@
         $c = $this->charts;
         $ind = $c['indicators'];
         $pct = fn ($v) => $v === null ? '—' : number_format($v, 0).'%';
+        // En las tarjetas KPI los montos van sin centavos para que quepan; el detalle muestra centavos.
+        $round = fn ($v) => '$'.number_format((float) $v, 0, '.', ',');
     @endphp
 
     <x-page-header title="Hola, {{ \Illuminate\Support\Str::before(auth()->user()->name, ' ') }}" :subtitle="ucfirst(today()->translatedFormat('l j \\d\\e F \\d\\e Y'))" />
 
     {{-- KPIs --}}
     <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <x-kpi label="Ventas confirmadas" :value="money($k['sales'])" icon="cash" tone="emerald" :hint="$k['salesCount'].' servicios'" />
+        <x-kpi label="Ventas confirmadas" :value="$round($k['sales'])" icon="cash" tone="emerald" :hint="$k['salesCount'].' servicios'" />
         <x-kpi label="Hectáreas confirmadas" :value="hectareas($k['hectares'])" icon="map" tone="brand" hint="Confirmados y realizados" />
         <x-kpi label="Censos programados" :value="$k['scheduled']" icon="calendar" tone="blue" :href="route('census.index')" hint="Fechas futuras" />
-        <x-kpi label="Pipeline" :value="money($k['pipeline'])" icon="kanban" tone="slate" :href="route('pipeline')" :hint="$k['openCount'].' oportunidades abiertas'" />
-        <x-kpi label="Saldo pendiente" :value="money($k['balance'])" icon="alert" :tone="$k['balance'] > 0 ? 'amber' : 'slate'" :href="route('census.index', ['vista' => 'lista'])" hint="Por cobrar de ventas" />
+        <x-kpi label="Pipeline" :value="$round($k['pipeline'])" icon="kanban" tone="slate" :href="route('pipeline')" :hint="$k['openCount'].' oportunidades abiertas'" />
+        <x-kpi label="Saldo pendiente" :value="$round($k['balance'])" icon="alert" :tone="$k['balance'] > 0 ? 'amber' : 'slate'" :href="route('census.index', ['vista' => 'lista'])" hint="Por cobrar de ventas" />
         <x-kpi label="Seguimientos vencidos" :value="$k['overdue']" icon="clock" :tone="$k['overdue'] ? 'rose' : 'slate'" :href="route('tasks.index')" :hint="$k['overdue'] ? 'Atender hoy' : 'Al día'" />
     </div>
 
