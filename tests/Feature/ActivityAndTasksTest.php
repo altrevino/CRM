@@ -9,6 +9,7 @@ use App\Models\Comment;
 use App\Models\Opportunity;
 use App\Models\Task;
 use App\Services\AttentionService;
+use App\Services\MetricsService;
 use App\Services\QuoteService;
 use Livewire\Livewire;
 use LogicException;
@@ -89,6 +90,22 @@ class ActivityAndTasksTest extends TestCase
         Opportunity::factory()->stage(PipelineStage::PendingDeposit)->create();
 
         $section = app(AttentionService::class)->sections()->firstWhere('key', 'deposit_no_payment');
+        $this->assertSame(1, $section['count']);
+    }
+
+    public function test_confirmado_sin_cotizacion_aceptada_se_senala_y_no_suma_venta(): void
+    {
+        $this->actingAsUser();
+        $withQuote = Opportunity::factory()->stage(PipelineStage::Confirmed)->create();
+        $quote = app(QuoteService::class)->create($withQuote, ['issued_at' => today(), 'hectares' => 100, 'service_amount' => 1000, 'apply_vat' => false]);
+        app(QuoteService::class)->accept($quote);
+        Opportunity::factory()->stage(PipelineStage::Confirmed)->create();
+
+        $metrics = app(MetricsService::class);
+        $this->assertSame(1, $metrics->confirmedSalesCount());
+        $this->assertSame(1, $metrics->wonWithoutAcceptedQuoteCount());
+
+        $section = app(AttentionService::class)->sections()->firstWhere('key', 'won_without_quote');
         $this->assertSame(1, $section['count']);
     }
 

@@ -33,6 +33,7 @@ class Dashboard extends Component
         return [
             'sales' => $m->confirmedSales(),
             'salesCount' => $m->confirmedSalesCount(),
+            'wonWithoutQuote' => $m->wonWithoutAcceptedQuoteCount(),
             'hectares' => $m->confirmedHectares(),
             'scheduled' => $m->scheduledCensusCount(),
             'pipeline' => $m->pipelineAmount(),

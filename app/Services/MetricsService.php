@@ -32,6 +32,12 @@ class MetricsService
         return Opportunity::won()->whereHas('acceptedQuote')->count();
     }
 
+    /** Ganadas (Confirmado o Censo realizado) sin cotización aceptada: su venta no se puede sumar. */
+    public function wonWithoutAcceptedQuoteCount(): int
+    {
+        return Opportunity::won()->whereDoesntHave('acceptedQuote')->count();
+    }
+
     /** Hectáreas confirmadas: Σ hectáreas cotizadas de oportunidades Confirmadas o Censo realizado. */
     public function confirmedHectares(): float
     {

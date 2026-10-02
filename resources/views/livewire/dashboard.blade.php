@@ -12,7 +12,8 @@
 
     {{-- KPIs --}}
     <div class="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <x-kpi label="Ventas confirmadas" :value="$round($k['sales'])" icon="cash" tone="emerald" :hint="$k['salesCount'].' servicios'" />
+        <x-kpi label="Ventas confirmadas" :value="$round($k['sales'])" icon="cash" tone="emerald"
+               :hint="$k['salesCount'].' servicios con cotización aceptada'.($k['wonWithoutQuote'] ? ' · '.$k['wonWithoutQuote'].' sin cotización' : '')" />
         <x-kpi label="Hectáreas confirmadas" :value="hectareas($k['hectares'])" icon="map" tone="brand" hint="Confirmados y realizados" />
         <x-kpi label="Censos programados" :value="$k['scheduled']" icon="calendar" tone="blue" :href="route('census.index')" hint="Fechas futuras" />
         <x-kpi label="Pipeline" :value="$round($k['pipeline'])" icon="kanban" tone="slate" :href="route('pipeline')" :hint="$k['openCount'].' oportunidades abiertas'" />

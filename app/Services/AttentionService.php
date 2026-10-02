@@ -115,6 +115,17 @@ class AttentionService
                 'action' => 'Registrar pago',
             ]);
 
+        $wonWithoutQuote = Opportunity::won()
+            ->whereDoesntHave('acceptedQuote')
+            ->with($with)->orderBy('stage_changed_at')->limit($limit)->get()
+            ->map(fn (Opportunity $o) => [
+                'title' => $o->ranch->name,
+                'subtitle' => $o->ranch->client->name,
+                'meta' => $o->stage->label().' sin cotización aceptada: no suma en ventas',
+                'url' => route('opportunities.show', [$o->id, 'tab' => 'cotizaciones']),
+                'action' => 'Ver cotizaciones',
+            ]);
+
         $pastCensus = Opportunity::scheduled()->whereDate('census_date', '<', today())
             ->with($with)->orderBy('census_date')->limit($limit)->get()
             ->map(fn (Opportunity $o) => [
@@ -131,6 +142,7 @@ class AttentionService
             ['key' => 'census_balance', 'label' => "Censos próximos ({$upcomingDays} días) con saldo pendiente", 'tone' => 'blue', 'items' => $upcomingWithBalance, 'count' => $upcomingWithBalance->count()],
             ['key' => 'followup_no_task', 'label' => 'En Seguimiento sin próxima tarea', 'tone' => 'amber', 'items' => $followUpWithoutTask, 'count' => Opportunity::where('stage', PipelineStage::FollowUp->value)->whereDoesntHave('pendingTasks')->count()],
             ['key' => 'deposit_no_payment', 'label' => 'Pendiente anticipo sin pago', 'tone' => 'blue', 'items' => $depositWithoutPayment, 'count' => Opportunity::where('stage', PipelineStage::PendingDeposit->value)->whereDoesntHave('payments')->count()],
+            ['key' => 'won_without_quote', 'label' => 'Confirmados sin cotización aceptada', 'tone' => 'amber', 'items' => $wonWithoutQuote, 'count' => Opportunity::won()->whereDoesntHave('acceptedQuote')->count()],
             ['key' => 'past_census', 'label' => 'Censos con fecha pasada sin marcar como realizados', 'tone' => 'slate', 'items' => $pastCensus, 'count' => Opportunity::scheduled()->whereDate('census_date', '<', today())->count()],
         ])->filter(fn ($section) => $section['count'] > 0)->values();
     }
