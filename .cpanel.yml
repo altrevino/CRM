@@ -1,0 +1,6 @@
+# Lo ejecuta cPanel en "Git Version Control → Pull or Deploy → Deploy HEAD Commit".
+# Corre dentro de la carpeta del repositorio. Ver docs/INSTALACION_CPANEL.md.
+---
+deployment:
+  tasks:
+    - /bin/bash deploy.sh

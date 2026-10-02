@@ -238,7 +238,68 @@ Cuando cambies `.env`, subas código nuevo o algo “no se actualiza”:
 
 ---
 
-## Actualizaciones
+## Despliegue con Git Version Control (recomendado)
+
+En lugar de subir archivos a mano, el servidor descarga el código de GitHub y `deploy.sh` hace el resto (dependencias, migraciones, caché). Requiere Terminal para la configuración inicial.
+
+### Configuración inicial (una sola vez)
+
+1. **Llave de acceso al repositorio privado** (Terminal):
+
+   ```bash
+   mkdir -p ~/.ssh && chmod 700 ~/.ssh
+   ssh-keygen -t ed25519 -f ~/.ssh/github_crm -N "" -C "cpanel-crm"
+   printf 'Host github.com\n  IdentityFile ~/.ssh/github_crm\n  IdentitiesOnly yes\n' >> ~/.ssh/config
+   chmod 600 ~/.ssh/config
+   ssh-keyscan github.com >> ~/.ssh/known_hosts
+   cat ~/.ssh/github_crm.pub
+   ```
+
+   Copia la línea que imprime el último comando. En GitHub → repositorio → *Settings → Deploy keys → Add deploy key*, pégala y **no** marques "Allow write access". Prueba con `ssh -T git@github.com`: debe saludar con el nombre del repositorio.
+
+2. **Aparta la instalación manual** (conserva el `.env`):
+
+   ```bash
+   mv ~/espectro-crm ~/espectro-crm-manual
+   ```
+
+   El sitio queda fuera de línea unos minutos, hasta el paso 5.
+
+3. **Clona desde cPanel** → *Git™ Version Control* → *Create*:
+   * Clone a Repository: activado
+   * Clone URL: `ssh://git@github.com/altrevino/CRM.git`
+   * Repository Path: `espectro-crm`
+   * Repository Name: `Espectro CRM`
+
+   La ruta debe ser la misma que ya usa el subdominio (`espectro-crm/public`), así no hay que tocar *Domains*.
+
+4. **Recupera la configuración**:
+
+   ```bash
+   cp ~/espectro-crm-manual/.env ~/espectro-crm/.env
+   ```
+
+5. **Primer despliegue**:
+
+   ```bash
+   cd ~/espectro-crm && bash deploy.sh
+   ```
+
+   `deploy.sh` busca solo PHP 8.3 o superior, descarga Composer si hace falta, instala dependencias, aplica migraciones y catálogos, y regenera la caché. Al terminar, el sitio vuelve a estar en línea.
+
+6. Cuando confirmes que todo funciona, borra la copia anterior: `rm -rf ~/espectro-crm-manual`.
+
+### Cada actualización
+
+* **Desde cPanel:** *Git™ Version Control* → *Manage* → *Pull or Deploy* → **Update from Remote** y después **Deploy HEAD Commit** (ejecuta `.cpanel.yml`, que llama a `deploy.sh`). El resultado queda en `~/.cpanel/logs/` (archivos `*_git_deploy.log`).
+* **Desde Terminal:** `cd ~/espectro-crm && git pull && bash deploy.sh`
+
+Reglas:
+
+* No edites archivos del código en el servidor: cPanel no despliega si hay cambios sin confirmar en la carpeta (`.env`, `vendor`, `storage` y `composer.phar` están excluidos y no cuentan).
+* Antes de una actualización con cambios importantes, respalda la base (ver `RESPALDOS.md`).
+
+## Actualizaciones (sin Git)
 
 1. En tu computadora: obtén la versión nueva, `composer install --no-dev --optimize-autoloader` y, si cambió el diseño, `npm run build`.
 2. Sube y reemplaza las carpetas `app`, `bootstrap` (sin borrar `bootstrap/cache`), `config`, `database`, `lang`, `public/build`, `resources`, `routes`, `vendor` y los archivos `composer.json`/`composer.lock`. **No** reemplaces `.env` ni `storage`.
