@@ -156,6 +156,32 @@ class QuoteTest extends TestCase
         $this->assertDatabaseHas('activity_logs', ['event' => 'quote_deleted', 'subject_id' => $quote->id]);
     }
 
+    public function test_eliminar_la_aceptada_permite_aceptar_otra(): void
+    {
+        $accepted = $this->service->create($this->opportunity, $this->data());
+        $this->service->accept($accepted);
+        $this->service->delete($accepted->fresh());
+
+        $other = $this->service->create($this->opportunity, $this->data());
+        $this->service->accept($other->fresh());
+
+        $this->assertSame(QuoteStatus::Accepted, $other->fresh()->status);
+        $this->assertNull(Quote::withTrashed()->find($accepted->id)->accepted_lock);
+    }
+
+    public function test_aceptar_libera_candados_huerfanos_de_datos_previos(): void
+    {
+        // Simula el dato dañado que dejaba la versión anterior al eliminar una aceptada.
+        $old = $this->service->create($this->opportunity, $this->data());
+        $old->forceFill(['status' => QuoteStatus::Replaced, 'accepted_lock' => 1])->saveQuietly();
+        $old->delete();
+
+        $new = $this->service->create($this->opportunity, $this->data());
+        $this->service->accept($new->fresh());
+
+        $this->assertSame(QuoteStatus::Accepted, $new->fresh()->status);
+    }
+
     private function data(): array
     {
         return ['issued_at' => today(), 'hectares' => 1000, 'service_amount' => 50000, 'logistics_amount' => 5000, 'apply_vat' => true];

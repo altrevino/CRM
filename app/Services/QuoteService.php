@@ -92,6 +92,13 @@ class QuoteService
     public function accept(Quote $quote): void
     {
         DB::transaction(function () use ($quote) {
+            // Defensa: ninguna cotización eliminada o no aceptada debe conservar el candado.
+            Quote::withTrashed()
+                ->where('opportunity_id', $quote->opportunity_id)
+                ->whereNotNull('accepted_lock')
+                ->where(fn ($q) => $q->whereNotNull('deleted_at')->orWhere('status', '!=', QuoteStatus::Accepted->value))
+                ->update(['accepted_lock' => null]);
+
             Quote::where('opportunity_id', $quote->opportunity_id)
                 ->where('status', QuoteStatus::Accepted->value)
                 ->whereKeyNot($quote->id)
@@ -205,10 +212,10 @@ class QuoteService
         }
 
         DB::transaction(function () use ($quote) {
-            // Libera el candado de "aceptada" antes del soft delete.
+            // Libera el candado de "aceptada" antes del soft delete. saveQuietly() no dispara
+            // el evento que calcula accepted_lock, por eso se limpia explícitamente.
             if ($quote->status === QuoteStatus::Accepted) {
-                $quote->status = QuoteStatus::Replaced;
-                $quote->saveQuietly();
+                $quote->forceFill(['status' => QuoteStatus::Replaced, 'accepted_lock' => null])->saveQuietly();
             }
             $quote->delete();
         });
