@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Forms\RanchForm;
 use App\Models\Client;
+use App\Models\MexicanState;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Models\Ranch;
 use App\Services\QuoteService;
 use Illuminate\Database\QueryException;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class RelationshipsTest extends TestCase
@@ -40,6 +43,27 @@ class RelationshipsTest extends TestCase
         $service->createVersion($first, $this->quoteData());
 
         $this->assertCount(3, $opportunity->quotes);
+    }
+
+    public function test_editar_rancho_con_campos_opcionales_vacios(): void
+    {
+        $this->actingAsUser();
+        $ranch = Ranch::factory()->create([
+            'municipality' => null, 'maps_url' => null, 'notes' => null,
+            'fence_type' => null, 'total_hectares' => null, 'km_round_trip' => null, 'state_id' => null,
+        ]);
+
+        Livewire::test(RanchForm::class)
+            ->call('open', $ranch->id)
+            ->assertSet('showModal', true)
+            ->assertSet('notes', '')
+            ->set('name', 'Rancho Renombrado')
+            ->set('municipality', 'Anáhuac')
+            ->set('state_id', (string) MexicanState::first()->id)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('Rancho Renombrado', $ranch->fresh()->name);
     }
 
     public function test_un_rancho_no_puede_existir_sin_cliente(): void

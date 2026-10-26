@@ -50,7 +50,9 @@ class RanchForm extends Component
             $ranch = Ranch::findOrFail($id);
             $this->authorize('update', $ranch);
             $this->ranchId = $ranch->id;
-            $this->fill($ranch->only(['client_id', 'name', 'municipality', 'maps_url', 'notes']));
+            // Los campos opcionales pueden venir vacíos (null): se convierten a texto uno por uno.
+            $this->client_id = $ranch->client_id;
+            $this->name = $ranch->name;
             $this->state_id = $ranch->state_id ? (string) $ranch->state_id : null;
             $this->fence_type = $ranch->fence_type?->value;
             $this->km_round_trip = $ranch->km_round_trip !== null ? (string) (float) $ranch->km_round_trip : null;
