@@ -108,7 +108,7 @@ class QuoteModuleTest extends TestCase
         $this->assertEquals(15, (float) $issued->pricing_snapshot['km_rate']);
 
         $this->get(route('quotes.pdf', $issued))->assertOk();
-        $this->assertStringContainsString('154,860.00', $this->pdfText($issued));
+        $this->assertStringContainsString('$154,860', $this->pdfText($issued));
 
         $new = $this->quote(['hectares' => 2000, 'one_way_km' => 200, 'apply_vat' => false]);
         $this->assertEquals(135000, (float) $new->service_amount);  // 70,000 + 30,000 + 500 × 70
@@ -252,8 +252,8 @@ class QuoteModuleTest extends TestCase
         $this->assertLessThan(2 * 1024 * 1024, strlen($response->getContent()));
 
         $text = $this->pdfText($quote);
-        $this->assertStringContainsString('149,060.00', $text);
-        $this->assertStringContainsString('20,560.00', $text);
+        $this->assertStringContainsString('$149,060', $text);
+        $this->assertStringContainsString('$20,560', $text);
         $this->assertStringNotContainsString('MOTIVO-INTERNO-XYZ', $text);
         $this->assertStringContainsString('Anticipo 25% para reservar fecha', $text);
         $this->assertStringContainsString('LEVANTAMIENTO INTEGRAL', $text);

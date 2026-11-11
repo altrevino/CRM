@@ -15,16 +15,25 @@ use Illuminate\Support\Facades\File;
  */
 class QuotePdf
 {
+    /**
+     * Carpeta de fuentes (resources/pdf/fonts/<versión>). dompdf guarda su caché por ruta,
+     * así que al modificar las fuentes se publican en una carpeta nueva.
+     * v2: métricas verticales normalizadas a 0.8/0.2 em para que line-height funcione como en Canva.
+     */
+    private const FONT_VERSION = 'v2';
+
     public function make(Quote $quote): DomPdf
     {
         // Caché de fuentes de dompdf; storage/ no se reemplaza al actualizar, por eso se crea aquí.
-        File::ensureDirectoryExists(storage_path('fonts'));
+        // Caché de fuentes de dompdf; storage/ no se reemplaza al actualizar, por eso se crea aquí.
+        $fontCache = storage_path('fonts');
+        File::ensureDirectoryExists($fontCache);
 
         // Láminas 16:9 como la propuesta COT-159 (960 × 540 pt).
         return Pdf::loadView('pdf.quote', $this->data($quote))->setPaper([0, 0, 960, 540])->setOption([
             'defaultFont' => 'Serif',
-            'fontDir' => storage_path('fonts'),
-            'fontCache' => storage_path('fonts'),
+            'fontDir' => $fontCache,
+            'fontCache' => $fontCache,
             'isRemoteEnabled' => false,
             'isFontSubsettingEnabled' => true,
             'dpi' => 96,
@@ -53,8 +62,15 @@ class QuotePdf
             'separateCharges' => trim((string) ($terms['separate_charges'] ?? '')),
             'paymentTerms' => trim((string) ($quote->payment_terms ?? '')),
             'logo' => $this->image('logo.png'),
-            'images' => collect(['venado', 'rutas', 'equipo', 'bitacora', 'auditoria'])->mapWithKeys(fn ($n) => [$n => $this->image("$n.jpg")])->all(),
-            'fonts' => resource_path('pdf/fonts'),
+            'images' => [
+                'venado' => $this->image('venado.jpg'),
+                'metodologia' => $this->image('metodologia-fotos.jpg'),
+                'bitacora' => $this->image('bitacora.jpg'),
+                'auditoria' => $this->image('auditoria.jpg'),
+            ],
+            'icons' => collect(['superficie', 'ubicacion', 'cerca', 'objetivo', 'recomendacion', 'entregable', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6'])
+                ->mapWithKeys(fn ($n) => [$n => $this->image("ic-$n.png")])->all(),
+            'fonts' => resource_path('pdf/fonts/'.self::FONT_VERSION),
         ];
     }
 
