@@ -242,6 +242,7 @@ class QuoteModuleTest extends TestCase
             'discount_type' => 'amount', 'discount_value' => 5000, 'discount_scope' => 'travel', 'discount_reason' => 'MOTIVO-INTERNO-XYZ',
         ]);
         $quote->opportunity->ranch->update(['name' => 'Rancho Las Lomas']);
+        $quote->opportunity->update(['service_type' => 'completo']);
 
         $response = $this->get(route('quotes.pdf', $quote));
 
@@ -254,6 +255,8 @@ class QuoteModuleTest extends TestCase
         $this->assertStringContainsString('149,060.00', $text);
         $this->assertStringContainsString('20,560.00', $text);
         $this->assertStringNotContainsString('MOTIVO-INTERNO-XYZ', $text);
+        $this->assertStringContainsString('Anticipo 25% para reservar fecha', $text);
+        $this->assertStringContainsString('LEVANTAMIENTO INTEGRAL', $text);
         $this->assertSame(QuoteStatus::Draft, $quote->fresh()->status);
         $this->assertNull($quote->fresh()->sent_at);
     }

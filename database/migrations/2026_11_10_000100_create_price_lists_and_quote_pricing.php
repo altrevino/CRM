@@ -88,8 +88,9 @@ return new class extends Migration
             'km_rate' => 15,
             'vat_rate' => is_numeric($vat) ? $vat : 16,
             'validity_days' => 15,
-            'payment_terms' => null,
-            'service_scope' => 'Censo térmico de fauna sobre la superficie cotizada.',
+            // Condiciones y alcance tomados de la propuesta COT-159.
+            'payment_terms' => "Anticipo 25% para reservar fecha\n50% siete días antes del censo\n25% contra entrega de reporte",
+            'service_scope' => "Cobertura sistemática\nBitácora digital\nAuditoría de detecciones\nAnálisis poblacional\nReporte técnico",
             'separate_charges' => 'Traslado y movilización, y viáticos cuando apliquen, se cobran por separado y se detallan en esta cotización.',
             'business' => json_encode([
                 'name' => 'Espectro Soluciones',

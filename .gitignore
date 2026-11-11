@@ -28,3 +28,4 @@ Thumbs.db
 # Despliegue en servidor
 /composer.phar
 /composer-setup.php
+/storage/fonts

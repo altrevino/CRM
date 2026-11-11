@@ -140,7 +140,7 @@ Menú lateral: **Dashboard · Pipeline · Clientes · Ranchos · Cotizaciones ·
 | `/cotizaciones` | `Quotes\Index` |
 | `/cotizaciones/nueva`, `/cotizaciones/{quote}/editar` | `Quotes\Builder` (cotización rápida; `?servicio=`, `?rancho=`, `?cliente=`, `?duplicar=`, `?revisar=`) |
 | `/cotizaciones/{quote}` | `Quotes\Show` (desglose, notas internas, revisiones, emitir, PDF) |
-| `/cotizaciones/{quote}/pdf` | `QuotePdfController` (dompdf, plantilla `resources/views/pdf/quote.blade.php`) |
+| `/cotizaciones/{quote}/pdf` | `QuotePdfController` (dompdf; plantilla `resources/views/pdf/quote.blade.php` con el diseño de la propuesta COT-159: 8 láminas 16:9, fuentes e imágenes en `resources/pdf/`) |
 | `/pagos` | `Payments\Index` |
 | `/censos` | `Census\Index` (Calendario mensual / Lista) |
 | `/seguimientos` | `Tasks\Index` |
