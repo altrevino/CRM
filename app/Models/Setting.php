@@ -33,9 +33,14 @@ class Setting extends Model
         Cache::forget('settings.all');
     }
 
+    /** IVA vigente: el de la tarifa actual (Configuración → Cotizaciones). */
     public static function vatRate(): float
     {
-        return (float) static::get('vat_rate');
+        try {
+            return (float) PriceList::current()->vat_rate;
+        } catch (\Throwable) {
+            return (float) static::get('vat_rate');
+        }
     }
 
     public static function quoteFollowupDays(): int

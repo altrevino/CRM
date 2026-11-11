@@ -4,10 +4,10 @@ namespace Tests\Feature;
 
 use App\Enums\PipelineStage;
 use App\Enums\QuoteStatus;
-use App\Livewire\Forms\QuoteForm;
+use App\Livewire\Quotes\Builder;
 use App\Models\Opportunity;
+use App\Models\PriceList;
 use App\Models\Quote;
-use App\Models\Setting;
 use App\Services\QuoteService;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\ValidationException;
@@ -28,53 +28,51 @@ class QuoteTest extends TestCase
         $this->opportunity = Opportunity::factory()->create();
     }
 
-    public function test_calcula_iva_sobre_servicio_mas_logistica(): void
+    public function test_calcula_iva_sobre_servicio_mas_traslado(): void
     {
         $quote = $this->service->create($this->opportunity, [
-            'issued_at' => today(), 'hectares' => 1000,
-            'service_amount' => 60000, 'logistics_amount' => 15000, 'apply_vat' => true,
+            'issued_at' => today(), 'hectares' => 1000, 'one_way_km' => 500, 'apply_vat' => true,
         ]);
 
-        $this->assertEquals(75000, (float) $quote->subtotal);
+        $this->assertEquals(70000, (float) $quote->service_amount);
+        $this->assertEquals(15000, (float) $quote->logistics_amount);
+        $this->assertEquals(85000, (float) $quote->subtotal);
         $this->assertEquals(16, (float) $quote->vat_rate);
-        $this->assertEquals(12000, (float) $quote->vat_amount);
-        $this->assertEquals(87000, (float) $quote->total);
+        $this->assertEquals(13600, (float) $quote->vat_amount);
+        $this->assertEquals(98600, (float) $quote->total);
     }
 
     public function test_cotizacion_sin_iva_tiene_iva_cero_y_total_igual_al_subtotal(): void
     {
         $quote = $this->service->create($this->opportunity, [
-            'issued_at' => today(), 'hectares' => 1000,
-            'service_amount' => 60000, 'logistics_amount' => 15000, 'apply_vat' => false,
+            'issued_at' => today(), 'hectares' => 1000, 'one_way_km' => 500, 'apply_vat' => false,
         ]);
 
         $this->assertEquals(0, (float) $quote->vat_amount);
         $this->assertEquals(0, (float) $quote->vat_rate);
-        $this->assertEquals(75000, (float) $quote->total);
+        $this->assertEquals(85000, (float) $quote->total);
         $this->assertSame('Sin IVA', $quote->vatLabel());
     }
 
-    public function test_conserva_el_iva_historico_si_cambia_la_configuracion(): void
+    public function test_conserva_el_iva_historico_si_cambia_el_tarifario(): void
     {
-        $quote = $this->service->create($this->opportunity, [
-            'issued_at' => today(), 'hectares' => 100, 'service_amount' => 10000, 'apply_vat' => true,
-        ]);
+        $quote = $this->service->create($this->opportunity, ['hectares' => 100, 'one_way_km' => 0, 'apply_vat' => true]);
 
-        Setting::set('vat_rate', 8);
-        $newQuote = $this->service->create($this->opportunity, [
-            'issued_at' => today(), 'hectares' => 100, 'service_amount' => 10000, 'apply_vat' => true,
-        ]);
+        $this->newPriceList(['vat_rate' => 8]);
+        $newQuote = $this->service->create($this->opportunity, ['hectares' => 100, 'one_way_km' => 0, 'apply_vat' => true]);
 
         $this->assertEquals(16, (float) $quote->fresh()->vat_rate);
-        $this->assertEquals(11600, (float) $quote->fresh()->total);
+        $this->assertEquals(43500, (float) $quote->fresh()->total);
         $this->assertEquals(8, (float) $newQuote->vat_rate);
     }
 
     public function test_el_formulario_obliga_a_elegir_con_o_sin_iva(): void
     {
-        Livewire::test(QuoteForm::class)
-            ->call('open', $this->opportunity->id)
-            ->set('service_amount', '10000')
+        Livewire::test(Builder::class, ['quote' => null])
+            ->call('selectClient', $this->opportunity->ranch->client_id)
+            ->call('selectRanch', $this->opportunity->ranch_id)
+            ->set('opportunity_id', $this->opportunity->id)
+            ->set('hectares', '1000')
             ->call('save')
             ->assertHasErrors(['apply_vat' => 'required']);
 
@@ -85,8 +83,8 @@ class QuoteTest extends TestCase
     {
         $v1 = $this->service->create($this->opportunity, $this->data());
         $this->service->markSent($v1);
-        $v2 = $this->service->createVersion($v1, $this->data());
-        $v3 = $this->service->createVersion($v2, $this->data());
+        $v2 = $this->service->createRevision($v1, $this->data());
+        $v3 = $this->service->createRevision($v2, $this->data());
 
         $this->assertSame('COT-'.$v1->folio, $v1->number);
         $this->assertSame('COT-'.$v1->folio.' V2', $v2->number);
@@ -144,7 +142,7 @@ class QuoteTest extends TestCase
         $this->service->accept($quote);
 
         $this->expectException(ValidationException::class);
-        $this->service->update($quote->fresh(), $this->data());
+        $this->service->updateDraft($quote->fresh(), $this->data());
     }
 
     public function test_eliminar_es_soft_delete_y_queda_en_historial(): void
@@ -182,8 +180,17 @@ class QuoteTest extends TestCase
         $this->assertSame(QuoteStatus::Accepted, $new->fresh()->status);
     }
 
+    private function newPriceList(array $changes): PriceList
+    {
+        $current = PriceList::current();
+        $attributes = collect($current->getAttributes())->except(['id', 'created_at', 'updated_at', 'blocks', 'business'])->all();
+        PriceList::query()->toBase()->update(['is_current' => false]);
+
+        return PriceList::create([...$attributes, 'blocks' => $current->blocks, 'business' => $current->business, 'version' => $current->version + 1, 'is_current' => true, 'activated_at' => now(), ...$changes]);
+    }
+
     private function data(): array
     {
-        return ['issued_at' => today(), 'hectares' => 1000, 'service_amount' => 50000, 'logistics_amount' => 5000, 'apply_vat' => true];
+        return ['issued_at' => today(), 'hectares' => 1000, 'one_way_km' => 0, 'apply_vat' => true];
     }
 }

@@ -23,6 +23,7 @@ class QuoteObserver
     {
         if ($quote->wasChanged('status')) {
             $event = match ($quote->status) {
+                QuoteStatus::Issued => ActivityEvent::QuoteIssued,
                 QuoteStatus::Sent => ActivityEvent::QuoteSent,
                 QuoteStatus::Accepted => ActivityEvent::QuoteAccepted,
                 QuoteStatus::Rejected => ActivityEvent::QuoteRejected,
@@ -30,6 +31,7 @@ class QuoteObserver
                 QuoteStatus::Draft => ActivityEvent::QuoteUpdated,
             };
             $text = match ($quote->status) {
+                QuoteStatus::Issued => "{$quote->number} emitida · ".money($quote->total).($quote->pricing_snapshot ? ' · Tarifa v'.$quote->pricing_snapshot['version'] : ''),
                 QuoteStatus::Sent => "{$quote->number} enviada al cliente",
                 QuoteStatus::Accepted => "{$quote->number} aceptada · ".money($quote->total),
                 QuoteStatus::Rejected => "{$quote->number} rechazada",
@@ -39,7 +41,7 @@ class QuoteObserver
             ActivityLogger::log($event, $quote, $text);
         }
 
-        $amounts = ['hectares', 'service_amount', 'logistics_amount', 'apply_vat', 'vat_rate', 'issued_at', 'notes'];
+        $amounts = ['hectares', 'service_amount', 'logistics_amount', 'travel_expenses', 'discount_amount', 'apply_vat', 'vat_rate', 'issued_at', 'notes', 'price_list_id'];
         if ($quote->wasChanged($amounts)) {
             $text = "{$quote->number} editada";
             if ($quote->wasChanged('total')) {

@@ -2,6 +2,9 @@
     <x-page-header title="Cotizaciones" subtitle="Todas las cotizaciones y sus versiones">
         <x-slot:actions>
             <button type="button" wire:click="export" class="btn-secondary"><x-icon name="download" class="size-4" /> Exportar</button>
+            @can('create', \App\Models\Quote::class)
+                <a href="{{ route('quotes.create') }}" wire:navigate class="btn-primary"><x-icon name="plus" class="size-4" /> Nueva cotización</a>
+            @endcan
         </x-slot:actions>
     </x-page-header>
 
@@ -26,20 +29,23 @@
                 <thead class="bg-slate-50/60">
                     <tr>
                         <x-sort-th field="number" label="Número" :sort-field="$sortField" :sort-direction="$sortDirection" />
-                        <x-sort-th field="issued_at" label="Fecha" :sort-field="$sortField" :sort-direction="$sortDirection" />
+                        <x-sort-th field="issued_at" label="Emisión" :sort-field="$sortField" :sort-direction="$sortDirection" />
+                        <x-sort-th field="valid_until" label="Vence" :sort-field="$sortField" :sort-direction="$sortDirection" class="hidden lg:table-cell" />
                         <x-sort-th field="client_name" label="Cliente / Rancho" :sort-field="$sortField" :sort-direction="$sortDirection" />
                         <x-sort-th field="hectares" label="Ha" :sort-field="$sortField" :sort-direction="$sortDirection" align="right" />
                         <x-sort-th field="subtotal" label="Subtotal" :sort-field="$sortField" :sort-direction="$sortDirection" align="right" class="hidden xl:table-cell" />
                         <x-sort-th field="vat_amount" label="IVA" :sort-field="$sortField" :sort-direction="$sortDirection" align="right" class="hidden xl:table-cell" />
                         <x-sort-th field="total" label="Total" :sort-field="$sortField" :sort-direction="$sortDirection" align="right" />
                         <x-sort-th field="status" label="Estado" :sort-field="$sortField" :sort-direction="$sortDirection" />
+                        <th class="table-th"><span class="sr-only">Acciones</span></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($quotes as $quote)
                         <tr wire:key="q-{{ $quote->id }}" class="hover:bg-slate-50/70">
-                            <td class="table-td"><a href="{{ route('opportunities.show', [$quote->opportunity_id, 'tab' => 'cotizaciones']) }}" wire:navigate class="font-medium text-slate-900 hover:text-brand-700">{{ $quote->number }}</a></td>
+                            <td class="table-td"><a href="{{ route('quotes.show', $quote) }}" wire:navigate class="font-medium text-slate-900 hover:text-brand-700">{{ $quote->number }}</a><span class="block text-xs text-slate-400">{{ $quote->pricingLabel() }}</span></td>
                             <td class="table-td">{{ fecha($quote->issued_at) }}</td>
+                            <td class="table-td hidden lg:table-cell {{ $quote->isExpired() ? 'text-rose-600' : '' }}">{{ $quote->valid_until ? fecha($quote->valid_until) : '—' }}</td>
                             <td class="table-td">
                                 <a href="{{ route('clients.show', $quote->opportunity->ranch->client_id) }}" wire:navigate class="block max-w-60 truncate font-medium text-slate-800 hover:text-brand-700">{{ $quote->client_name }}</a>
                                 <span class="block max-w-64 truncate text-xs text-slate-500">
@@ -56,13 +62,22 @@
                             </td>
                             <td class="table-td">
                                 <div class="flex flex-wrap items-center gap-1">
-                                    <x-badge :tone="$quote->status->badgeClasses()">{{ $quote->status->label() }}</x-badge>
+                                    <x-badge :tone="$quote->statusClasses()">{{ $quote->statusLabel() }}</x-badge>
                                     @isset($staleIds[$quote->id])<x-badge tone="rose" title="Enviada sin actividad posterior">Requiere seguimiento</x-badge>@endisset
                                 </div>
                             </td>
+                            <td class="table-td whitespace-nowrap text-right">
+                                <a href="{{ route('quotes.pdf', $quote) }}" class="btn-ghost btn-sm" title="Descargar PDF"><x-icon name="download" class="size-4" /></a>
+                                @can('create', \App\Models\Quote::class)
+                                    <a href="{{ route('quotes.create', ['duplicar' => $quote->id]) }}" wire:navigate class="btn-ghost btn-sm" title="Duplicar con tarifa vigente"><x-icon name="document" class="size-4" /></a>
+                                    @if ($quote->status !== \App\Enums\QuoteStatus::Draft)
+                                        <a href="{{ route('quotes.create', ['revisar' => $quote->id]) }}" wire:navigate class="btn-ghost btn-sm" title="Nueva revisión"><x-icon name="refresh" class="size-4" /></a>
+                                    @endif
+                                @endcan
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="8"><x-empty icon="document" title="No hay cotizaciones con estos filtros" /></td></tr>
+                        <tr><td colspan="10"><x-empty icon="document" title="No hay cotizaciones con estos filtros" /></td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -71,14 +86,14 @@
         <ul class="divide-y divide-slate-100 md:hidden">
             @forelse ($quotes as $quote)
                 <li wire:key="qm-{{ $quote->id }}">
-                    <a href="{{ route('opportunities.show', [$quote->opportunity_id, 'tab' => 'cotizaciones']) }}" wire:navigate class="block p-4">
+                    <a href="{{ route('quotes.show', $quote) }}" wire:navigate class="block p-4">
                         <div class="flex items-center justify-between gap-2">
                             <p class="font-medium text-slate-900">{{ $quote->number }}</p>
                             <p class="font-semibold tabular-nums">{{ money($quote->total) }}</p>
                         </div>
                         <p class="mt-0.5 text-xs text-slate-500">{{ $quote->client_name }} · {{ $quote->ranch_name }} · {{ fecha($quote->issued_at) }}</p>
                         <div class="mt-2 flex gap-1.5">
-                            <x-badge :tone="$quote->status->badgeClasses()">{{ $quote->status->label() }}</x-badge>
+                            <x-badge :tone="$quote->statusClasses()">{{ $quote->statusLabel() }}</x-badge>
                             <x-badge :tone="$quote->apply_vat ? 'sky' : 'amber'">{{ $quote->vatLabel() }}</x-badge>
                             @isset($staleIds[$quote->id])<x-badge tone="rose">Requiere seguimiento</x-badge>@endisset
                         </div>

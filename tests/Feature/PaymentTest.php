@@ -26,7 +26,7 @@ class PaymentTest extends TestCase
 
         $quotes = app(QuoteService::class);
         $quote = $quotes->create($this->opportunity, [
-            'issued_at' => today(), 'hectares' => 1000, 'service_amount' => 80000, 'logistics_amount' => 0, 'apply_vat' => false,
+            'issued_at' => today(), 'hectares' => 1000, 'one_way_km' => 0, 'service_adjusted' => true, 'service_amount' => 80000, 'service_adjust_reason' => 'Precio especial', 'apply_vat' => false,
         ]);
         $quotes->accept($quote);
     }

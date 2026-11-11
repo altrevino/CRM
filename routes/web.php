@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\QuotePdfController;
 use App\Livewire;
 use Illuminate\Support\Facades\Route;
 
@@ -25,12 +26,17 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::livewire('/servicios/{opportunity}', Livewire\Opportunities\Show::class)->name('opportunities.show');
 
     Route::livewire('/cotizaciones', Livewire\Quotes\Index::class)->name('quotes.index');
+    Route::livewire('/cotizaciones/nueva', Livewire\Quotes\Builder::class)->name('quotes.create');
+    Route::livewire('/cotizaciones/{quote}', Livewire\Quotes\Show::class)->name('quotes.show');
+    Route::livewire('/cotizaciones/{quote}/editar', Livewire\Quotes\Builder::class)->name('quotes.edit');
+    Route::get('/cotizaciones/{quote}/pdf', [QuotePdfController::class, 'download'])->name('quotes.pdf');
     Route::livewire('/pagos', Livewire\Payments\Index::class)->name('payments.index');
     Route::livewire('/censos', Livewire\Census\Index::class)->name('census.index');
     Route::livewire('/seguimientos', Livewire\Tasks\Index::class)->name('tasks.index');
 
     Route::middleware('can:manage-settings')->prefix('configuracion')->group(function () {
         Route::livewire('/', Livewire\Settings\General::class)->name('settings.general');
+        Route::livewire('/cotizaciones', Livewire\Settings\QuotePricing::class)->name('settings.quotes');
         Route::livewire('/usuarios', Livewire\Settings\Users::class)->name('settings.users');
         Route::livewire('/especies', Livewire\Settings\SpeciesCatalog::class)->name('settings.species');
         Route::livewire('/formas-de-pago', Livewire\Settings\PaymentMethods::class)->name('settings.payment-methods');

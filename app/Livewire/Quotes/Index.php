@@ -45,7 +45,7 @@ class Index extends Component
 
     protected function sortable(): array
     {
-        return ['number', 'issued_at', 'client_name', 'ranch_name', 'hectares', 'subtotal', 'vat_amount', 'total', 'status'];
+        return ['number', 'issued_at', 'valid_until', 'client_name', 'ranch_name', 'hectares', 'subtotal', 'vat_amount', 'total', 'status'];
     }
 
     protected function filterProperties(): array
@@ -69,9 +69,10 @@ class Index extends Component
             ->join('ranches', 'ranches.id', '=', 'opportunities.ranch_id')
             ->join('clients', 'clients.id', '=', 'ranches.client_id')
             ->whereNull('opportunities.deleted_at')
-            ->with(['opportunity.ranch.client', 'opportunity.ranch.state'])
+            ->with(['opportunity.ranch.client', 'opportunity.ranch.state', 'priceList'])
             ->search($this->search)
-            ->when($this->status, fn ($q) => $q->where('quotes.status', $this->status))
+            ->when($this->status === 'vencida', fn ($q) => $q->whereIn('quotes.status', [QuoteStatus::Issued->value, QuoteStatus::Sent->value])->whereDate('quotes.valid_until', '<', today()))
+            ->when($this->status && $this->status !== 'vencida', fn ($q) => $q->where('quotes.status', $this->status))
             ->when($this->client, fn ($q) => $q->where('ranches.client_id', $this->client))
             ->when($this->state, fn ($q) => $q->where('ranches.state_id', $this->state))
             ->when($this->vat !== '', fn ($q) => $q->where('quotes.apply_vat', $this->vat === 'si'))
@@ -95,18 +96,22 @@ class Index extends Component
             CsvExporter::number($q->hectares),
             CsvExporter::number($q->service_amount),
             CsvExporter::number($q->logistics_amount),
+            CsvExporter::number($q->travel_expenses),
+            CsvExporter::number($q->discount_amount),
             CsvExporter::number($q->subtotal),
             $q->apply_vat ? 'Sí' : 'No',
             CsvExporter::number($q->vat_rate),
             CsvExporter::number($q->vat_amount),
             CsvExporter::number($q->total),
-            $q->status->label(),
+            $q->statusLabel(),
+            fecha($q->valid_until, ''),
+            $q->pricingLabel(),
             $q->opportunity->stage->label(),
         ]);
 
         return CsvExporter::download('cotizaciones', [
             'Número', 'Fecha', 'Cliente', 'Rancho', 'Municipio', 'Estado', 'Servicio', 'Hectáreas', 'Importe servicio',
-            'Logística', 'Subtotal', 'Aplica IVA', '% IVA', 'IVA', 'Total', 'Estado cotización', 'Etapa del servicio',
+            'Traslado', 'Viáticos', 'Descuento', 'Subtotal', 'Aplica IVA', '% IVA', 'IVA', 'Total', 'Estado cotización', 'Vigente hasta', 'Tarifa', 'Etapa del servicio',
         ], $rows);
     }
 
@@ -117,7 +122,7 @@ class Index extends Component
         return view('livewire.quotes.index', [
             'quotes' => $quotes,
             'staleIds' => array_flip(app(AttentionService::class)->staleQuoteIds()),
-            'statuses' => QuoteStatus::options(),
+            'statuses' => [...QuoteStatus::options(), 'vencida' => 'Vencida'],
             'clients' => Client::orderBy('name')->pluck('name', 'id')->all(),
             'states' => MexicanState::orderBy('name')->pluck('name', 'id')->all(),
         ]);

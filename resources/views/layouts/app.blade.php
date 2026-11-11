@@ -55,7 +55,11 @@
                 <div class="min-w-0 flex-1">
                     <livewire:global-search />
                 </div>
-                <a href="{{ route('opportunities.create') }}" wire:navigate class="btn-primary">
+                <a href="{{ route('quotes.create') }}" wire:navigate class="btn-secondary" title="Nueva cotización">
+                    <x-icon name="document" class="size-4" />
+                    <span class="hidden sm:inline">Nueva cotización</span>
+                </a>
+                <a href="{{ route('opportunities.create') }}" wire:navigate class="btn-primary" title="Nuevo servicio">
                     <x-icon name="plus" class="size-4" />
                     <span class="hidden sm:inline">Nuevo servicio</span>
                 </a>
@@ -93,7 +97,6 @@
     <livewire:forms.client-form />
     <livewire:forms.ranch-form />
     <livewire:forms.opportunity-form />
-    <livewire:forms.quote-form />
     <livewire:forms.quote-adjust-form />
     <livewire:forms.payment-form />
     <livewire:forms.task-form />

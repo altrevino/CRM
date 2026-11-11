@@ -4,10 +4,8 @@
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <form wire:submit="save" class="card space-y-5 p-5 lg:col-span-2">
+            <p class="text-sm text-slate-500">Tarifas, IVA, costo por kilómetro, vigencia y textos del PDF están en <a href="{{ route('settings.quotes') }}" wire:navigate class="font-medium text-brand-700 hover:underline">Configuración → Cotizaciones</a>.</p>
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <x-field label="IVA predeterminado (%)" for="s-vat" error="vat_rate" hint="Se usa al crear cotizaciones Con IVA. Las cotizaciones existentes conservan su porcentaje.">
-                    <input id="s-vat" type="number" step="0.01" min="0" max="100" wire:model="vat_rate" class="input">
-                </x-field>
                 <x-field label="Folio inicial de cotizaciones" for="s-folio" error="quote_folio_start" hint="El siguiente número será el mayor entre este valor y el último folio + 1.">
                     <input id="s-folio" type="number" min="1" wire:model="quote_folio_start" class="input">
                 </x-field>

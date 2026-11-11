@@ -71,7 +71,7 @@ class ActivityAndTasksTest extends TestCase
         $this->actingAsUser();
         $service = app(QuoteService::class);
         $opportunity = Opportunity::factory()->create(['last_contact_at' => today()->subDays(10)]);
-        $quote = $service->create($opportunity, ['issued_at' => today(), 'hectares' => 100, 'service_amount' => 1000, 'apply_vat' => false]);
+        $quote = $service->create($opportunity, ['issued_at' => today(), 'hectares' => 100, 'one_way_km' => 0, 'apply_vat' => false]);
         $service->markSent($quote);
 
         $attention = app(AttentionService::class);
@@ -97,7 +97,7 @@ class ActivityAndTasksTest extends TestCase
     {
         $this->actingAsUser();
         $withQuote = Opportunity::factory()->stage(PipelineStage::Confirmed)->create();
-        $quote = app(QuoteService::class)->create($withQuote, ['issued_at' => today(), 'hectares' => 100, 'service_amount' => 1000, 'apply_vat' => false]);
+        $quote = app(QuoteService::class)->create($withQuote, ['issued_at' => today(), 'hectares' => 100, 'one_way_km' => 0, 'apply_vat' => false]);
         app(QuoteService::class)->accept($quote);
         Opportunity::factory()->stage(PipelineStage::Confirmed)->create();
 

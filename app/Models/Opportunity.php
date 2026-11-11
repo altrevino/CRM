@@ -148,7 +148,7 @@ class Opportunity extends Model
             'latest_quote_total' => Quote::query()
                 ->select('total')
                 ->whereColumn('quotes.opportunity_id', 'opportunities.id')
-                ->whereIn('status', [QuoteStatus::Draft->value, QuoteStatus::Sent->value])
+                ->whereIn('status', [QuoteStatus::Draft->value, QuoteStatus::Issued->value, QuoteStatus::Sent->value])
                 ->orderByDesc('folio')
                 ->orderByDesc('version')
                 ->limit(1),

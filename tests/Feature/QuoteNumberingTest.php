@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\QuoteStatus;
 use App\Livewire\Forms\QuoteAdjustForm;
-use App\Livewire\Forms\QuoteForm;
+use App\Livewire\Quotes\Builder;
 use App\Models\Opportunity;
 use App\Models\Quote;
 use App\Services\MetricsService;
@@ -57,10 +57,13 @@ class QuoteNumberingTest extends TestCase
     {
         $opportunity = Opportunity::factory()->create();
 
-        Livewire::test(QuoteForm::class)
-            ->call('open', $opportunity->id)
+        Livewire::test(Builder::class, ['quote' => null])
+            ->call('selectClient', $opportunity->ranch->client_id)
+            ->call('selectRanch', $opportunity->ranch_id)
+            ->set('opportunity_id', $opportunity->id)
             ->set('folio', '87')
-            ->set('service_amount', '10000')
+            ->set('hectares', '1000')
+            ->set('one_way_km', '0')
             ->set('apply_vat', 'no')
             ->call('save')
             ->assertHasNoErrors();
@@ -72,7 +75,7 @@ class QuoteNumberingTest extends TestCase
     {
         $opportunity = Opportunity::factory()->create();
         $v1 = $this->service->create($opportunity, $this->data());
-        $v2 = $this->service->createVersion($v1, $this->data());
+        $v2 = $this->service->createRevision($v1, $this->data());
         $this->service->accept($v2);
 
         Livewire::test(QuoteAdjustForm::class)
@@ -97,7 +100,7 @@ class QuoteNumberingTest extends TestCase
         $this->service->adjust($quote->fresh(), ['folio' => $quote->folio, 'version' => 1, 'accepted_at' => '2025-03-10']);
 
         $sales = app(MetricsService::class)->salesByMonth(2025);
-        $this->assertEquals(55000, $sales[2]);
+        $this->assertEquals(70000, $sales[2]);
     }
 
     public function test_ajuste_rechaza_numero_ocupado(): void
@@ -117,6 +120,6 @@ class QuoteNumberingTest extends TestCase
 
     private function data(): array
     {
-        return ['issued_at' => today(), 'hectares' => 1000, 'service_amount' => 50000, 'logistics_amount' => 5000, 'apply_vat' => true];
+        return ['issued_at' => today(), 'hectares' => 1000, 'one_way_km' => 0, 'apply_vat' => true];
     }
 }

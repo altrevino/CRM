@@ -162,7 +162,7 @@ Abre <http://localhost:8000> e inicia sesión. Con Herd o Laragon también puede
 php artisan test
 ```
 
-Usan SQLite en memoria (no tocan tu base). Cubren: relaciones cliente → rancho → servicio → cotización, una sola cotización aceptada (servicio e índice único), cálculo con y sin IVA, IVA histórico, versiones, saldo y pagos parciales, pagos negativos, cambio de etapa y su historial, Kanban con confirmación de Perdido, censos programados (con y sin fecha), permisos por rol, usuario desactivado, límite de intentos de login, comentarios inmutables, cotizaciones sin seguimiento y carga de todas las pantallas.
+Usan SQLite en memoria (no tocan tu base). Cubren: tarifa progresiva por bloques (referencias, límites, decimales, mínimo), traslado ida y vuelta y ajuste de km, $/km configurable, descuentos por alcance, ajustes de precio, IVA y redondeo, casos de aceptación de 2,000 ha, versiones del tarifario que no alteran cotizaciones emitidas, duplicar con tarifa vigente, aviso de borradores con tarifa anterior, descarga del PDF (nombre, tamaño, total igual a pantalla, sin notas internas), relaciones cliente → rancho → servicio → cotización, una sola cotización aceptada (servicio e índice único), cálculo con y sin IVA, IVA histórico, versiones, saldo y pagos parciales, pagos negativos, cambio de etapa y su historial, Kanban con confirmación de Perdido, censos programados (con y sin fecha), permisos por rol, usuario desactivado, límite de intentos de login, comentarios inmutables, cotizaciones sin seguimiento y carga de todas las pantallas.
 
 Para correrlas contra MySQL, crea una base vacía `espectro_test` y ejecuta:
 
@@ -173,7 +173,10 @@ DB_CONNECTION=mysql DB_DATABASE=espectro_test DB_USERNAME=root DB_PASSWORD=... p
 ## Uso rápido
 
 * **Nuevo servicio** (botón superior): busca o crea cliente → elige o crea rancho → captura el servicio y, opcionalmente, el primer seguimiento. Todo en una pantalla.
-* **Ficha del servicio**: cambiar etapa, cotizaciones (versiones, enviar, aceptar), pagos con barra de avance, tareas, comentarios y línea de tiempo.
+* **Nueva cotización** (botón superior, o desde cliente, rancho o servicio): elige o captura cliente y rancho, superficie y km de ida; el desglose (censo progresivo, traslado ida y vuelta, viáticos, descuento, IVA) se calcula en vivo con la tarifa vigente. «Guardar y descargar PDF» genera el archivo para WhatsApp; no la marca como enviada.
+* **Ficha de la cotización**: descargar PDF, emitir, marcar enviada/aceptada/rechazada, nueva revisión, duplicar con tarifa vigente, notas internas (motivos de descuentos y ajustes) y versión de tarifa usada.
+* **Tarifas**: Configuración → Cotizaciones (solo administradores). Cada cambio crea una versión nueva; las cotizaciones ya creadas conservan la suya.
+* **Ficha del servicio**: cambiar etapa, cotizaciones, pagos con barra de avance, tareas, comentarios y línea de tiempo.
 * **Pipeline**: Kanban; arrastra las tarjetas entre columnas. Mover a *Perdido* pide confirmación.
 * **Censos programados**: calendario mensual y lista; un servicio aparece aquí al estar *Confirmado* con fecha de censo.
 * **Exportar**: Clientes, Ranchos, Cotizaciones, Pagos y Censos programados exportan CSV (se abre directo en Excel) respetando los filtros activos.
@@ -181,7 +184,7 @@ DB_CONNECTION=mysql DB_DATABASE=espectro_test DB_USERNAME=root DB_PASSWORD=... p
 
 ## Migrar cotizaciones desde otro sistema
 
-* **Al crear** una cotización, abre «Número de cotización» y captura el folio original (por ejemplo `145` para `COT-145`) y su versión. Vacío = consecutivo automático.
+* **Al crear** una cotización, abre «Número» al final del formulario y captura el folio original (por ejemplo `145` para `COT-145`) y su versión. Vacío = consecutivo automático.
 * **Después**, en la cotización usa «Número y fechas» para corregir el número o fijar las fechas reales de envío y aceptación. Funciona aunque la cotización ya esté aceptada y no modifica montos ni estado.
 * Los números nuevos continúan después del folio más alto registrado. Si quieres que arranquen en otro número, ajusta «Folio inicial de cotizaciones» en Configuración.
 * Captura la fecha de aceptación real de las cotizaciones aceptadas históricas; si no, todas aparecerán como ventas del mes en que las registraste.

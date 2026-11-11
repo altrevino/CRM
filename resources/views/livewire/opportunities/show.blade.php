@@ -50,7 +50,7 @@
                         @endforeach
                     </div>
                 </div>
-                <button type="button" x-on:click="$dispatch('open-quote-form', { opportunityId: '{{ $o->id }}' })" class="btn-secondary"><x-icon name="document" class="size-4" /> Cotización</button>
+                <a href="{{ route('quotes.create', ['servicio' => $o->id]) }}" wire:navigate class="btn-secondary"><x-icon name="document" class="size-4" /> Cotización</a>
                 <button type="button" x-on:click="$dispatch('open-payment-form', { opportunityId: '{{ $o->id }}' })" class="btn-secondary"><x-icon name="cash" class="size-4" /> Pago</button>
                 <button type="button" x-on:click="$dispatch('open-task-form', { opportunityId: '{{ $o->id }}' })" class="btn-secondary"><x-icon name="check" class="size-4" /> Tarea</button>
                 <button type="button" wire:click="setTab('actividad')" x-on:click="setTimeout(() => document.getElementById('comment-box')?.focus(), 250)" class="btn-secondary"><x-icon name="chat" class="size-4" /> Comentario</button>
@@ -182,7 +182,7 @@
         <section class="card">
             <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
                 <h2 class="font-semibold text-slate-900">Cotizaciones</h2>
-                <button type="button" x-on:click="$dispatch('open-quote-form', { opportunityId: '{{ $o->id }}' })" class="btn-primary btn-sm"><x-icon name="plus" class="size-4" /> Nueva cotización</button>
+                <a href="{{ route('quotes.create', ['servicio' => $o->id]) }}" wire:navigate class="btn-primary btn-sm"><x-icon name="plus" class="size-4" /> Nueva cotización</a>
             </div>
             <ul class="divide-y divide-slate-100">
                 @forelse ($this->quotes as $quote)
@@ -190,13 +190,15 @@
                         <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                             <div>
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <p class="text-base font-semibold text-slate-900">{{ $quote->number }}</p>
-                                    <x-badge :tone="$quote->status->badgeClasses()">{{ $quote->status->label() }}</x-badge>
+                                    <a href="{{ route('quotes.show', $quote) }}" wire:navigate class="text-base font-semibold text-slate-900 hover:underline">{{ $quote->number }}</a>
+                                    <x-badge :tone="$quote->statusClasses()">{{ $quote->statusLabel() }}</x-badge>
+                                    <x-badge :tone="$quote->usesCurrentPricing() ? 'brand' : 'amber'">{{ $quote->pricingLabel() }}</x-badge>
                                     @if ($quote->status === $quoteStatus::Accepted)<x-badge tone="emerald">Vigente</x-badge>@endif
                                     <x-badge :tone="$quote->apply_vat ? 'sky' : 'amber'">{{ $quote->vatLabel() }}</x-badge>
                                 </div>
                                 <p class="mt-1 text-sm text-slate-500">
                                     {{ fecha($quote->issued_at) }} · {{ hectareas($quote->hectares) }}
+                                    @if ($quote->valid_until) · Vigente hasta {{ fecha($quote->valid_until) }}@endif
                                     @if ($quote->sent_at) · Enviada {{ fecha($quote->sent_at) }}@endif
                                     @if ($quote->accepted_at) · Aceptada {{ fecha($quote->accepted_at) }}@endif
                                     · {{ $quote->creator->name }}
@@ -205,26 +207,36 @@
                             </div>
                             <dl class="grid min-w-64 grid-cols-2 gap-x-6 gap-y-1 text-sm">
                                 <dt class="text-slate-500">Servicio</dt><dd class="text-right tabular-nums">{{ money($quote->service_amount) }}</dd>
-                                <dt class="text-slate-500">Logística</dt><dd class="text-right tabular-nums">{{ money($quote->logistics_amount) }}</dd>
+                                <dt class="text-slate-500">Traslado</dt><dd class="text-right tabular-nums">{{ money($quote->logistics_amount) }}</dd>
+                                @if ((float) $quote->travel_expenses > 0)<dt class="text-slate-500">Viáticos</dt><dd class="text-right tabular-nums">{{ money($quote->travel_expenses) }}</dd>@endif
+                                @if ($quote->hasDiscount())<dt class="text-slate-500">Descuento</dt><dd class="text-right tabular-nums">−{{ money($quote->discount_amount) }}</dd>@endif
                                 <dt class="text-slate-500">Subtotal</dt><dd class="text-right tabular-nums">{{ money($quote->subtotal) }}</dd>
                                 <dt class="text-slate-500">IVA</dt><dd class="text-right tabular-nums">{{ money($quote->vat_amount) }}</dd>
                                 <dt class="font-semibold text-slate-900">Total</dt><dd class="text-right font-semibold tabular-nums text-slate-900">{{ money($quote->total) }}</dd>
                             </dl>
                         </div>
                         <div class="mt-4 flex flex-wrap gap-2">
-                            @if ($quote->status === $quoteStatus::Draft)
-                                <button type="button" wire:click="markQuoteSent('{{ $quote->id }}')" class="btn-secondary btn-sm">Marcar como enviada</button>
-                            @endif
-                            @if (in_array($quote->status, [$quoteStatus::Draft, $quoteStatus::Sent, $quoteStatus::Rejected, $quoteStatus::Replaced], true))
-                                <button type="button" wire:click="acceptQuote('{{ $quote->id }}')" wire:confirm="¿Marcar {{ $quote->number }} como la cotización aceptada y vigente? Si existe otra aceptada pasará a Reemplazada." class="btn-sm btn bg-emerald-600 text-white hover:bg-emerald-700">Marcar como aceptada</button>
-                            @endif
-                            @if ($quote->status === $quoteStatus::Sent)
-                                <button type="button" wire:click="rejectQuote('{{ $quote->id }}')" wire:confirm="¿Marcar {{ $quote->number }} como rechazada?" class="btn-secondary btn-sm">Rechazada</button>
-                            @endif
-                            @can('update', $quote)
-                                <button type="button" x-on:click="$dispatch('open-quote-form', { opportunityId: '{{ $o->id }}', quoteId: '{{ $quote->id }}', mode: 'edit' })" class="btn-ghost btn-sm"><x-icon name="pencil" class="size-4" /> Editar</button>
+                            <a href="{{ route('quotes.pdf', $quote) }}" class="btn-secondary btn-sm"><x-icon name="download" class="size-4" /> PDF</a>
+                            <a href="{{ route('quotes.show', $quote) }}" wire:navigate class="btn-secondary btn-sm">Ver</a>
+                            @can('adjust', $quote)
+                                @if (in_array($quote->status, [$quoteStatus::Draft, $quoteStatus::Issued], true))
+                                    <button type="button" wire:click="markQuoteSent('{{ $quote->id }}')" class="btn-secondary btn-sm">Marcar como enviada</button>
+                                @endif
+                                @if (in_array($quote->status, [$quoteStatus::Draft, $quoteStatus::Issued, $quoteStatus::Sent, $quoteStatus::Rejected, $quoteStatus::Replaced], true))
+                                    <button type="button" wire:click="acceptQuote('{{ $quote->id }}')" wire:confirm="¿Marcar {{ $quote->number }} como la cotización aceptada y vigente? Si existe otra aceptada pasará a Reemplazada." class="btn-sm btn bg-emerald-600 text-white hover:bg-emerald-700">Marcar como aceptada</button>
+                                @endif
+                                @if (in_array($quote->status, [$quoteStatus::Issued, $quoteStatus::Sent], true))
+                                    <button type="button" wire:click="rejectQuote('{{ $quote->id }}')" wire:confirm="¿Marcar {{ $quote->number }} como rechazada?" class="btn-secondary btn-sm">Rechazada</button>
+                                @endif
                             @endcan
-                            <button type="button" x-on:click="$dispatch('open-quote-form', { opportunityId: '{{ $o->id }}', quoteId: '{{ $quote->id }}', mode: 'version' })" class="btn-ghost btn-sm"><x-icon name="refresh" class="size-4" /> Nueva versión</button>
+                            @can('update', $quote)
+                                <a href="{{ route('quotes.edit', $quote) }}" wire:navigate class="btn-ghost btn-sm"><x-icon name="pencil" class="size-4" /> Editar</a>
+                            @elsecan('create', \App\Models\Quote::class)
+                                <a href="{{ route('quotes.create', ['revisar' => $quote->id]) }}" wire:navigate class="btn-ghost btn-sm"><x-icon name="refresh" class="size-4" /> Nueva revisión</a>
+                            @endcan
+                            @can('create', \App\Models\Quote::class)
+                                <a href="{{ route('quotes.create', ['duplicar' => $quote->id]) }}" wire:navigate class="btn-ghost btn-sm"><x-icon name="document" class="size-4" /> Duplicar</a>
+                            @endcan
                             @can('adjust', $quote)
                                 <button type="button" x-on:click="$dispatch('open-quote-adjust', { quoteId: '{{ $quote->id }}' })" class="btn-ghost btn-sm" title="Cambiar número o fechas (migración)"><x-icon name="tag" class="size-4" /> Número y fechas</button>
                             @endcan

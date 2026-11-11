@@ -40,7 +40,7 @@ class RelationshipsTest extends TestCase
 
         $first = $service->create($opportunity, $this->quoteData());
         $service->create($opportunity, $this->quoteData());
-        $service->createVersion($first, $this->quoteData());
+        $service->createRevision($first, $this->quoteData());
 
         $this->assertCount(3, $opportunity->quotes);
     }
@@ -79,12 +79,12 @@ class RelationshipsTest extends TestCase
 
         Quote::create([
             'folio' => 1, 'issued_at' => today(), 'hectares' => 100,
-            'service_amount' => 1000, 'apply_vat' => false,
+            'one_way_km' => 0, 'apply_vat' => false,
         ]);
     }
 
     private function quoteData(): array
     {
-        return ['issued_at' => today(), 'hectares' => 1000, 'service_amount' => 50000, 'logistics_amount' => 5000, 'apply_vat' => true];
+        return ['issued_at' => today(), 'hectares' => 1000, 'one_way_km' => 0, 'apply_vat' => true];
     }
 }

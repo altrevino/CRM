@@ -17,6 +17,7 @@ enum ActivityEvent: string
     case CensusDateChanged = 'census_date_changed';
     case QuoteCreated = 'quote_created';
     case QuoteUpdated = 'quote_updated';
+    case QuoteIssued = 'quote_issued';
     case QuoteSent = 'quote_sent';
     case QuoteAccepted = 'quote_accepted';
     case QuoteRejected = 'quote_rejected';
@@ -50,6 +51,7 @@ enum ActivityEvent: string
             self::CensusDateChanged => 'Fecha de censo modificada',
             self::QuoteCreated => 'Cotización creada',
             self::QuoteUpdated => 'Cotización editada',
+            self::QuoteIssued => 'Cotización emitida',
             self::QuoteSent => 'Cotización enviada',
             self::QuoteAccepted => 'Cotización aceptada',
             self::QuoteRejected => 'Cotización rechazada',
@@ -78,7 +80,7 @@ enum ActivityEvent: string
             self::OpportunityCreated, self::OpportunityUpdated, self::OpportunityDeleted => 'briefcase',
             self::StageChanged => 'arrows',
             self::CensusDateChanged => 'calendar',
-            self::QuoteCreated, self::QuoteUpdated, self::QuoteSent, self::QuoteAccepted,
+            self::QuoteCreated, self::QuoteUpdated, self::QuoteIssued, self::QuoteSent, self::QuoteAccepted,
             self::QuoteRejected, self::QuoteReplaced, self::QuoteDeleted => 'document',
             self::PaymentRegistered, self::PaymentUpdated, self::PaymentDeleted => 'cash',
             self::TaskCreated, self::TaskCompleted, self::TaskCancelled, self::TaskReopened => 'check',

@@ -85,17 +85,17 @@ class DemoDataSeeder extends Seeder
         // 1. Censo realizado el año pasado, liquidado.
         $o1 = $this->opportunity($venado, 'completo', 2800, $deer, $admin, PipelineStage::CensusDone, census: today()->subMonths(10)->toDateString());
         $q = $this->quote($o1, 2800, 126000, 18000, true, issuedDaysAgo: 340, sentDaysAgo: 339, acceptedDaysAgo: 330);
-        $this->pay($o1, 83520, $transfer, 320, 'SPEI 4589', 'Anticipo 50%');
-        $this->pay($o1, 83520, $transfer, 300, 'SPEI 6120', 'Liquidación');
+        $this->pay($o1, $this->share($o1, 0.5), $transfer, 320, 'SPEI 4589', 'Anticipo 50%');
+        $this->pay($o1, $this->remaining($o1), $transfer, 300, 'SPEI 6120', 'Liquidación');
         Task::create(['title' => 'Entregar reporte de censo 2025', 'due_date' => today()->subMonths(9), 'opportunity_id' => $o1->id, 'assigned_to' => $ops->id])->complete();
 
         // 2. Censo confirmado en 5 días con saldo pendiente (V1 reemplazada por V2).
         $o2 = $this->opportunity($venado, 'completo', 2800, [...$deer, $species['Jabalí europeo']], $admin, PipelineStage::Prospect, tentative: today()->addDays(5)->toDateString());
         $v1 = $this->quote($o2, 2800, 140000, 20000, true, issuedDaysAgo: 60, sentDaysAgo: 59);
-        $v2 = $this->quotes->createVersion($v1, ['issued_at' => today()->subDays(50), 'hectares' => 2800, 'service_amount' => 133000, 'logistics_amount' => 20000, 'apply_vat' => true, 'notes' => 'Descuento por cliente recurrente.']);
+        $v2 = $this->quotes->createRevision($v1, [...$this->quotes->inputsFrom($v1), 'issued_at' => today()->subDays(50)->toDateString(), 'valid_until' => today()->subDays(35)->toDateString(), 'discount_type' => 'amount', 'discount_value' => 7000, 'discount_scope' => 'census', 'discount_reason' => 'Cliente recurrente.']);
         $this->quotes->markSent($v2);
         $this->quotes->accept($v2);
-        $this->pay($o2, 88740, $transfer, 30, 'SPEI 7781', 'Anticipo 50%');
+        $this->pay($o2, $this->share($o2, 0.5), $transfer, 30, 'SPEI 7781', 'Anticipo 50%');
         $this->stages->changeStage($o2, PipelineStage::Confirmed);
         $o2->update(['census_date' => today()->addDays(5)]);
         Task::create(['title' => 'Confirmar hospedaje y logística con Juan', 'due_date' => today(), 'opportunity_id' => $o2->id, 'assigned_to' => $admin->id]);
@@ -139,8 +139,8 @@ class DemoDataSeeder extends Seeder
         // 9. Confirmado en 12 días, sin IVA, liquidado.
         $o9 = $this->opportunity($herradura, 'completo', 2100, $deer, $admin, PipelineStage::Prospect, tentative: today()->addDays(12)->toDateString());
         $this->quote($o9, 2100, 94500, 10000, false, issuedDaysAgo: 45, sentDaysAgo: 45, acceptedDaysAgo: 40, notes: 'Pago en efectivo.');
-        $this->pay($o9, 52250, $cash, 38, null, 'Anticipo en efectivo');
-        $this->pay($o9, 52250, $cash, 5, null, 'Liquidación');
+        $this->pay($o9, $this->share($o9, 0.5), $cash, 38, null, 'Anticipo en efectivo');
+        $this->pay($o9, $this->remaining($o9), $cash, 5, null, 'Liquidación');
         $this->stages->changeStage($o9, PipelineStage::Confirmed);
         $o9->update(['census_date' => today()->addDays(12)]);
 
@@ -152,12 +152,12 @@ class DemoDataSeeder extends Seeder
         // 11. Censo realizado el año pasado en Coahuila.
         $o11 = $this->opportunity($sanIsidro, 'completo', 4500, $deer, $admin, PipelineStage::CensusDone, census: today()->subMonths(9)->subDays(10)->toDateString());
         $this->quote($o11, 4500, 189000, 26000, true, issuedDaysAgo: 320, sentDaysAgo: 318, acceptedDaysAgo: 310);
-        $this->pay($o11, 249400, $transfer, 290, 'SPEI 3321', 'Pago único');
+        $this->pay($o11, $this->share($o11, 1), $transfer, 290, 'SPEI 3321', 'Pago único');
 
         // 12. Confirmado con fecha pasada (falta marcar como realizado) y saldo.
         $o12 = $this->opportunity($palomas, 'localizacion', 1200, [$species['Venado cola blanca']], $admin, PipelineStage::Prospect);
         $this->quote($o12, 1200, 36000, 9000, true, issuedDaysAgo: 35, sentDaysAgo: 34, acceptedDaysAgo: 25);
-        $this->pay($o12, 26100, $transfer, 20, 'SPEI 5512', 'Anticipo 50%');
+        $this->pay($o12, $this->share($o12, 0.5), $transfer, 20, 'SPEI 5512', 'Anticipo 50%');
         $this->stages->changeStage($o12, PipelineStage::Confirmed);
         $o12->update(['census_date' => today()->subDays(3)]);
 
@@ -202,20 +202,20 @@ class DemoDataSeeder extends Seeder
         return $opportunity;
     }
 
+    /** Cotización calculada con la tarifa vigente; $logistics se convierte en km de ida a $15/km ida y vuelta. */
     private function quote(Opportunity $opportunity, float $hectares, float $service, float $logistics, bool $vat, int $issuedDaysAgo, ?int $sentDaysAgo = null, ?int $acceptedDaysAgo = null, ?string $notes = null): Quote
     {
         $quote = $this->quotes->create($opportunity, [
-            'issued_at' => today()->subDays($issuedDaysAgo),
+            'issued_at' => today()->subDays($issuedDaysAgo)->toDateString(),
             'hectares' => $hectares,
-            'service_amount' => $service,
-            'logistics_amount' => $logistics,
+            'one_way_km' => round($logistics / 30),
             'apply_vat' => $vat,
             'notes' => $notes,
         ]);
 
         if ($sentDaysAgo !== null) {
             $this->quotes->markSent($quote);
-            $quote->forceFill(['sent_at' => now()->subDays($sentDaysAgo)])->saveQuietly();
+            $quote->forceFill(['sent_at' => now()->subDays($sentDaysAgo), 'issued_at' => today()->subDays($issuedDaysAgo), 'valid_until' => today()->subDays($issuedDaysAgo)->addDays(15)])->saveQuietly();
         }
 
         if ($acceptedDaysAgo !== null) {
@@ -224,6 +224,19 @@ class DemoDataSeeder extends Seeder
         }
 
         return $quote;
+    }
+
+    /** Fracción del total aceptado del servicio, redondeada a pesos. */
+    private function share(Opportunity $opportunity, float $fraction): float
+    {
+        return round((float) $opportunity->fresh()->acceptedQuote->total * $fraction, 0);
+    }
+
+    private function remaining(Opportunity $opportunity): float
+    {
+        $opportunity = $opportunity->fresh();
+
+        return round((float) $opportunity->acceptedQuote->total - (float) $opportunity->payments()->sum('amount'), 2);
     }
 
     private function pay(Opportunity $opportunity, float $amount, int $method, int $daysAgo, ?string $reference, string $notes): void

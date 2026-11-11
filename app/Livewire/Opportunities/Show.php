@@ -173,23 +173,27 @@ class Show extends Component
     public function markQuoteSent(string $id, QuoteService $service): void
     {
         $quote = $this->findQuote($id);
-        $this->authorize('update', $quote);
-        $service->markSent($quote);
+        $this->authorize('adjust', $quote);
+        if (! $this->attempt(fn () => $service->markSent($quote))) {
+            return;
+        }
         $this->dispatch('notify', message: "{$quote->number} marcada como enviada");
     }
 
     public function acceptQuote(string $id, QuoteService $service): void
     {
         $quote = $this->findQuote($id);
-        $this->authorize('update', $quote);
-        $service->accept($quote);
+        $this->authorize('adjust', $quote);
+        if (! $this->attempt(fn () => $service->accept($quote))) {
+            return;
+        }
         $this->dispatch('notify', message: "{$quote->number} es la cotización vigente");
     }
 
     public function rejectQuote(string $id, QuoteService $service): void
     {
         $quote = $this->findQuote($id);
-        $this->authorize('update', $quote);
+        $this->authorize('adjust', $quote);
         $service->reject($quote);
         $this->dispatch('notify', message: "{$quote->number} rechazada");
     }
@@ -204,6 +208,20 @@ class Show extends Component
             $this->dispatch('notify', message: "{$quote->number} eliminada");
         } catch (ValidationException $e) {
             $this->dispatch('notify', message: collect($e->errors())->flatten()->first(), type: 'error');
+        }
+    }
+
+    /** Ejecuta una acción de cotización y muestra el error de negocio (p. ej. tarifa no vigente) como aviso. */
+    private function attempt(callable $action): bool
+    {
+        try {
+            $action();
+
+            return true;
+        } catch (ValidationException $e) {
+            $this->dispatch('notify', message: collect($e->errors())->flatten()->first(), type: 'error');
+
+            return false;
         }
     }
 

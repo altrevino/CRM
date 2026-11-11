@@ -10,6 +10,7 @@
             @if ($ranch->client->phone)
                 <a href="{{ $ranch->client->whatsappUrl() }}" target="_blank" rel="noopener" class="btn bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"><x-icon name="whatsapp" class="size-4" /><span class="hidden sm:inline">WhatsApp</span></a>
             @endif
+            <a href="{{ route('quotes.create', ['rancho' => $ranch->id]) }}" wire:navigate class="btn-secondary"><x-icon name="document" class="size-4" /> Nueva cotización</a>
             <a href="{{ route('opportunities.create', ['rancho' => $ranch->id]) }}" wire:navigate class="btn-primary"><x-icon name="plus" class="size-4" /> Nuevo servicio</a>
             <button type="button" x-on:click="$dispatch('open-ranch-form', { id: '{{ $ranch->id }}' })" class="btn-secondary"><x-icon name="pencil" class="size-4" /> Editar</button>
             @can('delete', $ranch)

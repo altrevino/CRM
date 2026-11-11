@@ -7,7 +7,7 @@ Cómo se calcula cada cifra del Dashboard. Código: `app/Services/MetricsService
 * Nunca cuentan registros eliminados (soft delete): oportunidades, cotizaciones ni pagos.
 * "Ganadas" = oportunidades en etapa **Confirmado** o **Censo realizado**.
 * "Abiertas" = **Prospecto, Cotización enviada, Seguimiento, Pendiente anticipo**.
-* "Monto cotizado" de una oportunidad = total de su cotización **aceptada**; si no tiene, el total de su cotización más reciente en Borrador o Enviada. Las rechazadas y reemplazadas no cuentan.
+* "Monto cotizado" de una oportunidad = total de su cotización **aceptada**; si no tiene, el total de su cotización más reciente en Borrador, Emitida o Enviada. Las rechazadas y reemplazadas no cuentan.
 * Montos en MXN, con IVA cuando la cotización lo incluye (el total real que paga el cliente).
 
 ## KPIs

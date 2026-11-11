@@ -14,6 +14,7 @@
             @if ($client->phone)
                 <a href="{{ $client->whatsappUrl() }}" target="_blank" rel="noopener" class="btn bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"><x-icon name="whatsapp" class="size-4" /> WhatsApp</a>
             @endif
+            <a href="{{ route('quotes.create', ['cliente' => $client->id]) }}" wire:navigate class="btn-secondary"><x-icon name="document" class="size-4" /> Nueva cotización</a>
             <a href="{{ route('opportunities.create', ['cliente' => $client->id]) }}" wire:navigate class="btn-primary"><x-icon name="plus" class="size-4" /> Nuevo servicio</a>
             <button type="button" x-on:click="$dispatch('open-client-form', { id: '{{ $client->id }}' })" class="btn-secondary"><x-icon name="pencil" class="size-4" /> Editar</button>
             @can('delete', $client)

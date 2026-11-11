@@ -302,6 +302,7 @@ Reglas:
 ## Actualizaciones (sin Git)
 
 1. En tu computadora: obtén la versión nueva, `composer install --no-dev --optimize-autoloader` y, si cambió el diseño, `npm run build`.
+   > **Versión con PDF de cotizaciones (nov-2026):** agrega la librería `barryvdh/laravel-dompdf`. Es obligatorio subir la carpeta `vendor` completa en esa actualización y ejecutar `php artisan migrate --force` (crea el tarifario v1 sin modificar cotizaciones existentes).
 2. Sube y reemplaza las carpetas `app`, `bootstrap` (sin borrar `bootstrap/cache`), `config`, `database`, `lang`, `public/build`, `resources`, `routes`, `vendor` y los archivos `composer.json`/`composer.lock`. **No** reemplaces `.env` ni `storage`.
 3. Respalda la base (ver `RESPALDOS.md`).
 4. Con SSH: `php artisan migrate --force && php artisan optimize`.

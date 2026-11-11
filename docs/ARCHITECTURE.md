@@ -79,15 +79,20 @@ Cliente 1 ── N Rancho 1 ── N Oportunidad 1 ── N Cotización 1 ──
 3. Una oportunidad tiene N cotizaciones. **Solo una puede estar `Aceptada`.** Se garantiza en dos niveles:
    * `QuoteService::accept()` marca como `Reemplazada` cualquier otra aceptada, dentro de una transacción.
    * Índice único `(opportunity_id, accepted_lock)` en BD: `accepted_lock = 1` solo cuando la cotización está aceptada (NULL en cualquier otro caso).
-4. Cálculo de cotización (en `Quote::recalculate()`):
-   * Subtotal = Servicio + Logística
-   * Con IVA: IVA = Subtotal × % IVA ; Total = Subtotal + IVA
-   * Sin IVA: IVA = 0 ; Total = Subtotal
+4. Cálculo de cotización (`App\Services\Pricing\QuoteCalculator`, única fuente para pantalla, guardado y PDF):
+   * Censo: tarifa mínima (p. ej. $37,500 hasta 500 ha) + cada bloque cobra su precio solo por las hectáreas que caen en él (progresivo, no por tramo completo). Superficie > 0, admite decimales.
+   * Traslado y movilización = km de ida × 2 × $/km. Se puede ajustar el total de km con motivo obligatorio (se guardan ida, km calculados, km cotizados y motivo).
+   * Viáticos: concepto aparte, opcional.
+   * Un descuento por cotización, por importe o porcentaje, con alcance explícito (censo, traslado o subtotal), base visible y motivo obligatorio. Nunca excede su base.
+   * Ajuste excepcional del precio del censo con motivo; guarda precio calculado, ajustado, usuario y fecha.
+   * Subtotal = censo + traslado + viáticos − descuento. Con IVA: IVA = Subtotal × % ; Sin IVA: IVA = 0. Total = Subtotal + IVA.
+   * Aritmética en centavos (`App\Support\Money`), redondeo a 2 decimales una sola vez por producto (mitad hacia arriba).
    * `apply_vat` **no tiene valor por defecto implícito**: el formulario obliga a elegir “Con IVA” o “Sin IVA”.
-   * El % de IVA se copia de Configuración al crear la cotización y se guarda en la propia cotización (histórico).
-5. Versiones: “Nueva versión” crea `COT-145 V2` con los mismos datos; las versiones anteriores en Borrador/Enviada pasan a `Reemplazada`.
+4b. Tarifario versionado (`price_lists`): Configuración → Cotizaciones guarda cada cambio como versión nueva (`Tarifa v2`…) inmutable. Cada cotización guarda `price_list_id` y una copia (`pricing_snapshot`) de bloques, $/km, IVA, vigencia, textos y datos comerciales; el PDF usa esa copia. Las cotizaciones nuevas siempre usan la vigente. Un borrador con tarifa anterior muestra aviso y «Actualizar a tarifa vigente»; para emitirlo así se exige motivo (`pricing_override_reason`). Las cotizaciones previas al módulo quedan como «Previa al tarifario» con sus montos originales.
+5. Estados: Borrador → Emitida → Enviada → Aceptada / Rechazada; Reemplazada. «Vencida» no se guarda: es Emitida o Enviada con `valid_until` anterior a hoy. Solo los borradores se editan. Descargar el PDF no cambia el estado.
+5a. Revisión (`COT-145 V2`): conserva folio, recalcula con la tarifa vigente y conserva descuentos y ajustes para revisarlos; las versiones en Borrador/Emitida/Enviada pasan a `Reemplazada` y quedan consultables. Duplicar crea un folio nuevo con la tarifa vigente sin copiar descuentos ni ajustes excepcionales (`duplicated_from`).
 5b. Numeración: por defecto el folio es consecutivo (el mayor entre `folio más alto + 1` y el "Folio inicial" de Configuración). Para migrar desde otro sistema se puede capturar el folio y la versión al crear, o ajustarlos después con "Número y fechas" (`QuoteService::adjust`), en cualquier estado. Reglas: el número `COT-folio[ Vn]` es único (incluye eliminadas), un folio pertenece a un solo servicio, y al cambiar el folio todas sus versiones lo adoptan. El mismo ajuste permite fijar las fechas históricas de envío y aceptación (la de aceptación define el mes en "Ventas por mes"). Todo queda en el historial.
-6. Las cotizaciones aceptadas no se editan; se crea una nueva versión.
+6. Las cotizaciones emitidas, enviadas o aceptadas no se editan; se crea una revisión.
 7. Saldo = Total de la cotización aceptada − Σ pagos no eliminados de la oportunidad. Nunca se guarda: se calcula siempre.
 8. Pagos: monto > 0, múltiples parciales. Si existe cotización aceptada, el pago se liga a ella.
 9. **Censos programados no es una tabla.** Es la consulta `Opportunity::scheduled()` = etapa `Confirmado` **y** `census_date` no nula.
@@ -121,7 +126,7 @@ Los **observers** (`app/Observers`) registran automáticamente: creación/edici�
 
 ## 7. Navegación y pantallas
 
-Menú lateral: **Dashboard · Pipeline · Clientes · Ranchos · Cotizaciones · Pagos · Censos programados · Seguimientos · Configuración**. Barra superior: buscador global + botón **Nuevo servicio**.
+Menú lateral: **Dashboard · Pipeline · Clientes · Ranchos · Cotizaciones · Pagos · Censos programados · Seguimientos · Configuración**. Barra superior: buscador global + botones **Nueva cotización** y **Nuevo servicio**.
 
 | Ruta | Pantalla (componente) |
 |------|-----------------------|
@@ -133,12 +138,15 @@ Menú lateral: **Dashboard · Pipeline · Clientes · Ranchos · Cotizaciones ·
 | `/servicios/nuevo` | `Opportunities\Create` (flujo rápido cliente → rancho → servicio) |
 | `/servicios/{opportunity}` | `Opportunities\Show` (Resumen · Cotizaciones · Pagos · Seguimientos · Actividad) |
 | `/cotizaciones` | `Quotes\Index` |
+| `/cotizaciones/nueva`, `/cotizaciones/{quote}/editar` | `Quotes\Builder` (cotización rápida; `?servicio=`, `?rancho=`, `?cliente=`, `?duplicar=`, `?revisar=`) |
+| `/cotizaciones/{quote}` | `Quotes\Show` (desglose, notas internas, revisiones, emitir, PDF) |
+| `/cotizaciones/{quote}/pdf` | `QuotePdfController` (dompdf, plantilla `resources/views/pdf/quote.blade.php`) |
 | `/pagos` | `Payments\Index` |
 | `/censos` | `Census\Index` (Calendario mensual / Lista) |
 | `/seguimientos` | `Tasks\Index` |
-| `/configuracion/*` | `Settings\General`, `Settings\Users`, `Settings\SpeciesCatalog`, `Settings\PaymentMethods` |
+| `/configuracion/*` | `Settings\General`, `Settings\QuotePricing`, `Settings\Users`, `Settings\SpeciesCatalog`, `Settings\PaymentMethods` |
 
-Formularios en **modal**, montados una vez en el layout y abiertos por evento desde cualquier pantalla: `Forms\ClientForm`, `Forms\RanchForm`, `Forms\OpportunityForm`, `Forms\QuoteForm`, `Forms\PaymentForm`, `Forms\TaskForm`. Al guardar emiten `crm:refresh` y la pantalla visible se actualiza.
+Formularios en **modal**, montados una vez en el layout y abiertos por evento desde cualquier pantalla: `Forms\ClientForm`, `Forms\RanchForm`, `Forms\OpportunityForm`, `Forms\QuoteAdjustForm`, `Forms\PaymentForm`, `Forms\TaskForm`. Al guardar emiten `crm:refresh` y la pantalla visible se actualiza.
 
 Breadcrumbs en fichas: Cliente → Rancho → Servicio.
 
