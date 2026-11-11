@@ -109,7 +109,7 @@ class QuoteService
         $overrideReason = trim((string) $overrideReason);
         if (! $quote->usesCurrentPricing() && mb_strlen($overrideReason) < 5) {
             throw ValidationException::withMessages([
-                'pricing' => 'Esta cotización usa '.$quote->pricingLabel().' y la vigente es '.PriceList::current()->label().'. Actualízala a la tarifa vigente o confirma el uso de la anterior indicando el motivo.',
+                'pricing' => 'Esta cotización usa '.$quote->pricingPhrase().' y la vigente es la '.PriceList::current()->label().'. Indica el motivo para conservar sus precios o actualízala a la tarifa vigente.',
             ]);
         }
 

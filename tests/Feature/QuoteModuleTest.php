@@ -164,6 +164,32 @@ class QuoteModuleTest extends TestCase
         $this->assertEquals(127500, (float) $emitted->total);
     }
 
+    public function test_aceptar_borrador_previo_al_tarifario_pide_motivo_y_conserva_montos(): void
+    {
+        $legacy = $this->quote(['hectares' => 1000, 'one_way_km' => 0, 'apply_vat' => false]);
+        $legacy->forceFill(['price_list_id' => null, 'pricing_snapshot' => null, 'service_amount' => 50000])->save();
+        $legacy->refresh();
+        $this->assertEquals(50000, (float) $legacy->total);
+
+        Livewire::test(Show::class, ['quote' => $legacy])
+            ->call('accept')
+            ->assertSet('showEmit', true)
+            ->assertSet('then', 'accept')
+            ->assertSee('precios previos al tarifario')
+            ->call('emit')
+            ->assertHasErrors('pricing')
+            ->set('overrideReason', 'Cotización migrada del sistema anterior')
+            ->call('emit')
+            ->assertHasNoErrors();
+
+        $legacy->refresh();
+        $this->assertSame(QuoteStatus::Accepted, $legacy->status);
+        $this->assertEquals(50000, (float) $legacy->total);
+        $this->assertSame('Cotización migrada del sistema anterior', $legacy->pricing_override_reason);
+
+        $this->get(route('quotes.show', [$this->quote(['hectares' => 10, 'apply_vat' => false]), 'accion' => 'enviar']))->assertOk();
+    }
+
     public function test_actualizar_borrador_a_tarifa_vigente_recalcula(): void
     {
         $draft = $this->quote(['hectares' => 400, 'one_way_km' => 10, 'apply_vat' => false]);

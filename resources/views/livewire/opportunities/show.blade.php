@@ -219,10 +219,15 @@
                             <a href="{{ route('quotes.pdf', $quote) }}" class="btn-secondary btn-sm"><x-icon name="download" class="size-4" /> PDF</a>
                             <a href="{{ route('quotes.show', $quote) }}" wire:navigate class="btn-secondary btn-sm">Ver</a>
                             @can('adjust', $quote)
-                                @if (in_array($quote->status, [$quoteStatus::Draft, $quoteStatus::Issued], true))
+                                @php $needsReason = $quote->status === $quoteStatus::Draft && ! $quote->usesCurrentPricing(); @endphp
+                                @if ($needsReason)
+                                    <a href="{{ route('quotes.show', [$quote, 'accion' => 'enviar']) }}" wire:navigate class="btn-secondary btn-sm">Marcar como enviada</a>
+                                    <a href="{{ route('quotes.show', [$quote, 'accion' => 'aceptar']) }}" wire:navigate class="btn-sm btn bg-emerald-600 text-white hover:bg-emerald-700">Marcar como aceptada</a>
+                                @endif
+                                @if (! $needsReason && in_array($quote->status, [$quoteStatus::Draft, $quoteStatus::Issued], true))
                                     <button type="button" wire:click="markQuoteSent('{{ $quote->id }}')" class="btn-secondary btn-sm">Marcar como enviada</button>
                                 @endif
-                                @if (in_array($quote->status, [$quoteStatus::Draft, $quoteStatus::Issued, $quoteStatus::Sent, $quoteStatus::Rejected, $quoteStatus::Replaced], true))
+                                @if (! $needsReason && in_array($quote->status, [$quoteStatus::Draft, $quoteStatus::Issued, $quoteStatus::Sent, $quoteStatus::Rejected, $quoteStatus::Replaced], true))
                                     <button type="button" wire:click="acceptQuote('{{ $quote->id }}')" wire:confirm="¿Marcar {{ $quote->number }} como la cotización aceptada y vigente? Si existe otra aceptada pasará a Reemplazada." class="btn-sm btn bg-emerald-600 text-white hover:bg-emerald-700">Marcar como aceptada</button>
                                 @endif
                                 @if (in_array($quote->status, [$quoteStatus::Issued, $quoteStatus::Sent], true))

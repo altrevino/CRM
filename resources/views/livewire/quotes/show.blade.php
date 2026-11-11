@@ -33,7 +33,7 @@
 
     @if ($q->status === $S::Draft && $outdated)
         <div class="mb-5 flex flex-col gap-3 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200 sm:flex-row sm:items-center sm:justify-between">
-            <div class="flex items-start gap-2"><x-icon name="alert" class="mt-0.5 size-4 shrink-0" /><span>Este borrador usa <strong>{{ $q->pricingLabel() }}</strong>; la vigente es la <strong>{{ $currentPriceList->label() }}</strong>. Actualízala antes de emitir o confirma el uso de la anterior con un motivo.</span></div>
+            <div class="flex items-start gap-2"><x-icon name="alert" class="mt-0.5 size-4 shrink-0" /><span>Este borrador usa <strong>{{ $q->pricingPhrase() }}</strong>; la vigente es la <strong>{{ $currentPriceList->label() }}</strong>. Actualízala antes de emitir o confirma el uso de la anterior con un motivo.</span></div>
             @can('update', $q)
                 <button type="button" wire:click="refreshPricing" wire:confirm="Se recalcularán censo, traslado e IVA con la {{ $currentPriceList->label() }}. Los descuentos y ajustes se conservan si siguen siendo válidos. ¿Continuar?" class="btn-primary btn-sm shrink-0"><x-icon name="refresh" class="size-4" /> Actualizar a tarifa vigente</button>
             @endcan
@@ -160,20 +160,21 @@
         </aside>
     </div>
 
-    <x-modal title="Emitir {{ $q->number }}" model="showEmit" size="md">
+    @php $emitVerb = ['sent' => 'Emitir y marcar como enviada', 'accept' => 'Emitir y aceptar'][$then] ?? 'Emitir'; @endphp
+    <x-modal :title="$emitVerb.' '.$q->number" model="showEmit" size="md">
         <div class="space-y-3 text-sm">
             <p>Al emitirla, los montos y condiciones quedan fijos. Para cambiarla después se crea una revisión. No se envía al cliente.</p>
             @if ($outdated)
-                <p class="rounded-lg bg-amber-50 px-3 py-2 text-amber-900 ring-1 ring-amber-200">Usa <strong>{{ $q->pricingLabel() }}</strong> y la vigente es <strong>{{ $currentPriceList->label() }}</strong>. Cierra y usa «Actualizar a tarifa vigente», o indica por qué se emite con la anterior.</p>
-                <x-field label="Motivo para conservar la tarifa anterior" for="emit-reason" error="pricing" required>
-                    <input id="emit-reason" type="text" wire:model="overrideReason" class="input" placeholder="Precio respetado de propuesta previa">
+                <p class="rounded-lg bg-amber-50 px-3 py-2 text-amber-900 ring-1 ring-amber-200">Usa {{ $q->pricingPhrase() }} y la vigente es la <strong>{{ $currentPriceList->label() }}</strong>. Para conservar sus montos ({{ money($q->total) }}) indica el motivo. Si prefieres recalcularla, cierra y usa «Actualizar a tarifa vigente».</p>
+                <x-field label="Motivo para conservar sus precios" for="emit-reason" error="pricing" required>
+                    <input id="emit-reason" type="text" wire:model="overrideReason" class="input" placeholder="Cotización migrada del sistema anterior">
                 </x-field>
             @endif
             @error('quote')<p class="text-rose-600">{{ $message }}</p>@enderror
         </div>
         <x-slot:footer>
             <button type="button" class="btn-secondary" x-on:click="$wire.showEmit = false">Cancelar</button>
-            <button type="button" wire:click="emit" class="btn-primary" wire:loading.attr="disabled">Emitir</button>
+            <button type="button" wire:click="emit" class="btn-primary" wire:loading.attr="disabled">{{ $emitVerb }}</button>
         </x-slot:footer>
     </x-modal>
 </div>

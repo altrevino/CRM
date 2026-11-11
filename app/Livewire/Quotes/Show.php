@@ -2,10 +2,12 @@
 
 namespace App\Livewire\Quotes;
 
+use App\Enums\QuoteStatus;
 use App\Models\ActivityLog;
 use App\Models\PriceList;
 use App\Models\Quote;
 use App\Services\QuoteService;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -20,6 +22,10 @@ class Show extends Component
 
     public bool $showEmit = false;
 
+    /** Acción que sigue a la emisión cuando se marca enviada/aceptada un borrador con tarifa no vigente. */
+    #[Locked]
+    public string $then = '';
+
     public string $overrideReason = '';
 
     /** Descargar el PDF automáticamente al llegar desde «Guardar y descargar». */
@@ -30,6 +36,12 @@ class Show extends Component
         $this->authorize('view', $quote);
         $this->quoteId = $quote->id;
         $this->autoDownload = (bool) session('download_pdf');
+
+        // Desde la ficha del servicio: ?accion=enviar|aceptar abre la confirmación con motivo.
+        $action = ['enviar' => 'sent', 'aceptar' => 'accept'][request('accion')] ?? null;
+        if ($action && $quote->status === QuoteStatus::Draft && ! $quote->usesCurrentPricing() && Gate::allows('update', $quote)) {
+            $this->openEmit($action);
+        }
     }
 
     #[Computed]
@@ -72,9 +84,10 @@ class Show extends Component
         $this->run(fn () => $service->refreshPricing($this->quote), 'Precios actualizados a '.PriceList::current()->label());
     }
 
-    public function openEmit(): void
+    public function openEmit(string $then = ''): void
     {
         $this->authorize('update', $this->quote);
+        $this->then = in_array($then, ['sent', 'accept'], true) ? $then : '';
         $this->overrideReason = '';
         $this->resetValidation();
         $this->showEmit = true;
@@ -91,19 +104,42 @@ class Show extends Component
             return;
         }
         $this->showEmit = false;
+        $then = $this->then;
+        $this->then = '';
         $this->refreshQuote();
-        $this->dispatch('notify', message: "{$this->quote->number} emitida");
+
+        match ($then) {
+            'sent' => $this->run(fn () => $service->markSent($this->quote), "{$this->quote->number} emitida y marcada como enviada"),
+            'accept' => $this->run(fn () => $service->accept($this->quote), "{$this->quote->number} emitida y aceptada"),
+            default => $this->dispatch('notify', message: "{$this->quote->number} emitida"),
+        };
+    }
+
+    /** Un borrador con tarifa no vigente se emite primero con motivo (en el modal). */
+    private function needsOverride(): bool
+    {
+        return $this->quote->status === QuoteStatus::Draft && ! $this->quote->usesCurrentPricing();
     }
 
     public function markSent(QuoteService $service): void
     {
         $this->authorize('adjust', $this->quote);
+        if ($this->needsOverride()) {
+            $this->openEmit('sent');
+
+            return;
+        }
         $this->run(fn () => $service->markSent($this->quote), 'Marcada como enviada');
     }
 
     public function accept(QuoteService $service): void
     {
         $this->authorize('adjust', $this->quote);
+        if ($this->needsOverride()) {
+            $this->openEmit('accept');
+
+            return;
+        }
         $this->run(fn () => $service->accept($this->quote), 'Cotización aceptada');
     }
 

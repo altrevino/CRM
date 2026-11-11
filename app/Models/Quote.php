@@ -172,6 +172,12 @@ class Quote extends Model
         return $this->pricingVersion() ? 'Tarifa v'.$this->pricingVersion() : 'Previa al tarifario';
     }
 
+    /** Frase para avisos: «la Tarifa v1» o «precios previos al tarifario». */
+    public function pricingPhrase(): string
+    {
+        return $this->pricingVersion() ? 'la '.$this->pricingLabel() : 'precios previos al tarifario';
+    }
+
     public function usesCurrentPricing(): bool
     {
         return $this->price_list_id !== null && $this->price_list_id === PriceList::current()->id;
