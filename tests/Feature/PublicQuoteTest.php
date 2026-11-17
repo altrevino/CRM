@@ -52,7 +52,7 @@ class PublicQuoteTest extends TestCase
             ->assertSee($quote->number)
             ->assertSee('$154,860')
             ->assertSee('Aceptar cotización')
-            ->assertSee('Lo que recibes al final del', false)
+            ->assertSee('Metodología')->assertSee('Lo que')
             ->assertSee('noindex', false)
             ->assertDontSee('SIN VIGENCIA');
         $this->get($url)->assertOk();
@@ -89,7 +89,7 @@ class PublicQuoteTest extends TestCase
         $this->assertDatabaseHas('activity_logs', ['event' => 'quote_client_response', 'subject_id' => $quote->id]);
         Mail::assertSent(QuoteClientResponded::class);
 
-        $this->get($url)->assertSee('Cotización aceptada')->assertDontSee('data-open="m-accept"', false);
+        $this->get($url)->assertSee('Aceptada el')->assertDontSee('data-open="m-accept"', false);
 
         // No se puede responder dos veces.
         $this->post(route('public.quote.reject', $quote->public_token), ['reason' => 'precio']);
