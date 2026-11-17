@@ -299,6 +299,10 @@ Reglas:
 * No edites archivos del código en el servidor: cPanel no despliega si hay cambios sin confirmar en la carpeta (`.env`, `vendor`, `storage` y `composer.phar` están excluidos y no cuentan).
 * Antes de una actualización con cambios importantes, respalda la base (ver `RESPALDOS.md`).
 
+## Link público de cotizaciones (Cloudflare Access)
+
+Las cotizaciones se comparten en `https://crm.espectrosoluciones.com.mx/c/<código>`. Si el CRM está protegido con Cloudflare Access, crea una aplicación adicional para la ruta `/c/` con política **Bypass → Everyone**; el resto del CRM sigue protegido. Para el aviso por correo cuando el cliente responde, configura `MAIL_MAILER=smtp`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS` en `.env` con una cuenta de correo de cPanel; el aviso llega al correo de Configuración → Cotizaciones → Datos comerciales.
+
 ## Actualizaciones (sin Git)
 
 1. En tu computadora: obtén la versión nueva, `composer install --no-dev --optimize-autoloader` y, si cambió el diseño, `npm run build`.

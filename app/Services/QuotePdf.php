@@ -48,19 +48,8 @@ class QuotePdf
 
     private function data(Quote $quote): array
     {
-        $quote->loadMissing(['opportunity.ranch.client', 'opportunity.ranch.state']);
-
-        // Cotizaciones previas al tarifario no tienen copia de textos: se usan los vigentes.
-        $terms = $quote->pricing_snapshot ?? PriceList::current()->snapshot();
-
         return [
-            'quote' => $quote,
-            'ranch' => $quote->opportunity->ranch,
-            'client' => $quote->opportunity->ranch->client,
-            'business' => $terms['business'] ?? [],
-            'scope' => $this->lines($terms['service_scope'] ?? ''),
-            'separateCharges' => trim((string) ($terms['separate_charges'] ?? '')),
-            'paymentTerms' => trim((string) ($quote->payment_terms ?? '')),
+            ...$this->content($quote),
             'logo' => $this->image('logo.png'),
             'images' => [
                 'venado' => $this->image('venado.jpg'),
@@ -71,6 +60,26 @@ class QuotePdf
             'icons' => collect(['superficie', 'ubicacion', 'cerca', 'objetivo', 'recomendacion', 'entregable', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6'])
                 ->mapWithKeys(fn ($n) => [$n => $this->image("ic-$n.png")])->all(),
             'fonts' => resource_path('pdf/fonts/'.self::FONT_VERSION),
+        ];
+    }
+
+    /**
+     * Contenido compartido por el PDF y la página pública: textos y condiciones de la versión
+     * de tarifa con que se emitió (las previas al tarifario usan la vigente).
+     */
+    public function content(Quote $quote): array
+    {
+        $quote->loadMissing(['opportunity.ranch.client', 'opportunity.ranch.state']);
+        $terms = $quote->pricing_snapshot ?? PriceList::current()->snapshot();
+
+        return [
+            'quote' => $quote,
+            'ranch' => $quote->opportunity->ranch,
+            'client' => $quote->opportunity->ranch->client,
+            'business' => $terms['business'] ?? [],
+            'scope' => $this->lines($terms['service_scope'] ?? ''),
+            'separateCharges' => trim((string) ($terms['separate_charges'] ?? '')),
+            'paymentTerms' => trim((string) ($quote->payment_terms ?? '')),
         ];
     }
 

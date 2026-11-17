@@ -13,6 +13,7 @@ use App\Models\Quote;
 use App\Models\Ranch;
 use App\Services\QuotePdf;
 use App\Services\QuoteService;
+use App\Support\BusinessDays;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -59,7 +60,7 @@ class QuoteModuleTest extends TestCase
         $this->assertSame(QuoteStatus::Draft, $quote->status);
         $this->assertSame(PriceList::current()->id, $quote->price_list_id);
         $this->assertSame(1, $quote->pricing_snapshot['version']);
-        $this->assertSame(today()->addDays(15)->toDateString(), $quote->valid_until->toDateString());
+        $this->assertSame(BusinessDays::add(today(), 15)->toDateString(), $quote->valid_until->toDateString());
     }
 
     public function test_el_total_no_depende_del_navegador(): void

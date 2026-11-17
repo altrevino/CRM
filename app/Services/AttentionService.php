@@ -78,6 +78,16 @@ class AttentionService
                 'action' => 'Dar seguimiento',
             ]);
 
+        $clientResponsesQuery = fn () => Quote::whereNotNull('client_responded_at')->where('client_responded_at', '>=', now()->subDays(7));
+        $clientResponses = $clientResponsesQuery()->with('opportunity.ranch.client')->latest('client_responded_at')->limit($limit)->get()
+            ->map(fn (Quote $q) => [
+                'title' => "{$q->number} · ".($q->client_response === 'aceptada' ? 'aceptada' : 'rechazada').' por el cliente',
+                'subtitle' => $q->opportunity->ranch->client->name.' · '.$q->opportunity->ranch->name.' · '.money($q->total),
+                'meta' => fecha_hora($q->client_responded_at).($q->client_response === 'aceptada' ? ' · solicitar anticipo' : ''),
+                'url' => route('quotes.show', $q),
+                'action' => 'Ver cotización',
+            ]);
+
         $upcomingWithBalance = Opportunity::scheduled()->withFinancials()->with($with)
             ->whereDate('census_date', '>=', today())
             ->whereDate('census_date', '<=', today()->addDays($upcomingDays))
@@ -137,6 +147,7 @@ class AttentionService
             ]);
 
         return collect([
+            ['key' => 'client_responses', 'label' => 'Respuestas de clientes (últimos 7 días)', 'tone' => 'blue', 'items' => $clientResponses, 'count' => $clientResponsesQuery()->count()],
             ['key' => 'overdue', 'label' => 'Seguimientos vencidos', 'tone' => 'rose', 'items' => $overdue, 'count' => Task::overdue()->count()],
             ['key' => 'stale_quotes', 'label' => 'Cotizaciones enviadas sin seguimiento', 'tone' => 'amber', 'items' => $staleQuotes, 'count' => $this->staleQuotesQuery()->count()],
             ['key' => 'census_balance', 'label' => "Censos próximos ({$upcomingDays} días) con saldo pendiente", 'tone' => 'blue', 'items' => $upcomingWithBalance, 'count' => $upcomingWithBalance->count()],

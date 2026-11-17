@@ -5,14 +5,17 @@ namespace App\Services;
 use App\Enums\ActivityEvent;
 use App\Enums\PipelineStage;
 use App\Enums\QuoteStatus;
+use App\Mail\QuoteClientResponded;
 use App\Models\Opportunity;
 use App\Models\PriceList;
 use App\Models\Quote;
 use App\Services\Pricing\PricingException;
 use App\Services\Pricing\QuoteCalculator;
+use App\Support\BusinessDays;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class QuoteService
@@ -114,12 +117,17 @@ class QuoteService
         }
 
         DB::transaction(function () use ($quote, $overrideReason) {
+            // La vigencia cuenta en días hábiles desde la emisión. Si el borrador conserva la fecha
+            // calculada por defecto (o ya pasó), se vuelve a calcular; una fecha capturada a mano se respeta.
+            $days = (int) ($quote->pricing_snapshot['validity_days'] ?? PriceList::current()->validity_days);
+            $defaultUntil = $quote->issued_at ? BusinessDays::add($quote->issued_at, $days) : null;
+            if (! $quote->valid_until || $quote->valid_until->lt(today()) || ($defaultUntil && $quote->valid_until->isSameDay($defaultUntil))) {
+                $quote->valid_until = BusinessDays::add(today(), $days);
+            }
+
             $quote->status = QuoteStatus::Issued;
             $quote->emitted_at = now();
             $quote->issued_at = today();
-            if (! $quote->valid_until || $quote->valid_until->lt(today())) {
-                $quote->valid_until = today()->addDays((int) ($quote->pricing_snapshot['validity_days'] ?? PriceList::current()->validity_days));
-            }
             if (! $quote->usesCurrentPricing()) {
                 $quote->pricing_override_reason = $overrideReason;
             }
@@ -220,7 +228,7 @@ class QuoteService
             'apply_vat' => $result['apply_vat'],
             'vat_rate' => $result['vat_rate'],
             'issued_at' => $issuedAt,
-            'valid_until' => ($data['valid_until'] ?? null) ?: ($quote->valid_until ?? $issuedAt->copy()->addDays((int) $snapshot['validity_days'])),
+            'valid_until' => ($data['valid_until'] ?? null) ?: ($quote->valid_until ?? BusinessDays::add($issuedAt, (int) $snapshot['validity_days'])),
             'tentative_service_date' => ($data['tentative_service_date'] ?? null) ?: null,
             'payment_terms' => array_key_exists('payment_terms', $data) ? ($data['payment_terms'] ?: null) : ($quote->payment_terms ?? $snapshot['payment_terms']),
             'observations' => ($data['observations'] ?? null) ?: null,
@@ -258,6 +266,91 @@ class QuoteService
 
             $this->opportunities->advanceTo($quote->opportunity, PipelineStage::QuoteSent);
         });
+    }
+
+    // ------------------------------------------------------------ Link público
+
+    /** Registra una visita del cliente. La primera queda en el historial. */
+    public function registerClientView(Quote $quote): void
+    {
+        $first = $quote->client_first_viewed_at === null;
+        $quote->forceFill([
+            'client_first_viewed_at' => $quote->client_first_viewed_at ?? now(),
+            'client_last_viewed_at' => now(),
+            'client_views' => (int) $quote->client_views + 1,
+        ])->saveQuietly();
+
+        if ($first) {
+            ActivityLogger::log(ActivityEvent::QuoteViewed, $quote, "El cliente abrió {$quote->number} desde el link");
+        }
+    }
+
+    /** El cliente acepta desde el link: misma regla que aceptar en el CRM, más la constancia de quién y desde dónde. */
+    public function acceptByClient(Quote $quote, string $name, ?string $ip, ?string $agent): void
+    {
+        $this->assertClientCanRespond($quote);
+
+        DB::transaction(function () use ($quote, $name, $ip, $agent) {
+            $this->accept($quote);
+            $this->storeClientResponse($quote, 'aceptada', $name, null, null, $ip, $agent);
+            ActivityLogger::log(ActivityEvent::QuoteClientResponse, $quote, "{$quote->number} aceptada por el cliente desde el link ({$name})");
+        });
+
+        $this->notifyClientResponse($quote);
+    }
+
+    public function rejectByClient(Quote $quote, ?string $reason, ?string $comment, ?string $ip, ?string $agent): void
+    {
+        $this->assertClientCanRespond($quote);
+
+        DB::transaction(function () use ($quote, $reason, $comment, $ip, $agent) {
+            $this->reject($quote);
+            $this->storeClientResponse($quote, 'rechazada', null, $reason, $comment, $ip, $agent);
+            $label = Quote::REJECT_REASONS[$reason] ?? null;
+            ActivityLogger::log(ActivityEvent::QuoteClientResponse, $quote, "{$quote->number} rechazada por el cliente desde el link".($label ? " · Motivo: {$label}" : '').($comment ? " · {$comment}" : ''));
+        });
+
+        $this->notifyClientResponse($quote);
+    }
+
+    private function assertClientCanRespond(Quote $quote): void
+    {
+        $quote->refresh();
+        if (! $quote->clientCanRespond()) {
+            throw ValidationException::withMessages([
+                'quote' => $quote->isExpired()
+                    ? 'Esta cotización ya no está vigente. Solicita una actualización.'
+                    : 'Esta cotización ya no admite respuesta.',
+            ]);
+        }
+    }
+
+    private function storeClientResponse(Quote $quote, string $response, ?string $name, ?string $reason, ?string $comment, ?string $ip, ?string $agent): void
+    {
+        $quote->forceFill([
+            'client_response' => $response,
+            'client_responded_at' => now(),
+            'client_responded_by' => $name ? mb_substr(trim($name), 0, 120) : null,
+            'client_response_reason' => $reason,
+            'client_response_comment' => $comment ? mb_substr(trim($comment), 0, 1000) : null,
+            'client_response_ip' => $ip,
+            'client_response_agent' => $agent ? mb_substr($agent, 0, 255) : null,
+        ])->saveQuietly();
+    }
+
+    /** Aviso por correo al correo comercial. Si el correo no está configurado, no interrumpe la respuesta. */
+    private function notifyClientResponse(Quote $quote): void
+    {
+        $to = $quote->pricing_snapshot['business']['email'] ?? PriceList::current()->business['email'] ?? null;
+        if (! $to) {
+            return;
+        }
+
+        try {
+            Mail::to($to)->send(new QuoteClientResponded($quote->fresh(['opportunity.ranch.client'])));
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /** Marca la cotización como la aceptada/vigente. Cualquier otra aceptada pasa a Reemplazada. */

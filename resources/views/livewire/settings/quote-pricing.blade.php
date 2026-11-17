@@ -79,7 +79,7 @@
                     <x-field label="IVA (%)" for="qp-vat" error="vat_rate" required>
                         <input id="qp-vat" type="number" step="0.01" min="0" max="100" wire:model="vat_rate" class="input">
                     </x-field>
-                    <x-field label="Vigencia predeterminada (días naturales)" for="qp-valid" error="validity_days" required>
+                    <x-field label="Vigencia predeterminada (días hábiles)" hint="Lunes a viernes, sin días feriados oficiales." for="qp-valid" error="validity_days" required>
                         <input id="qp-valid" type="number" min="1" max="365" wire:model="validity_days" class="input">
                     </x-field>
                 </div>

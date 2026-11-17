@@ -199,6 +199,7 @@
                                 <p class="mt-1 text-sm text-slate-500">
                                     {{ fecha($quote->issued_at) }} · {{ hectareas($quote->hectares) }}
                                     @if ($quote->valid_until) · Vigente hasta {{ fecha($quote->valid_until) }}@endif
+                                    @if ($quote->client_response) · <span class="{{ $quote->client_response === 'aceptada' ? 'text-emerald-700' : 'text-rose-700' }}">{{ ucfirst($quote->client_response) }} por el cliente desde el link</span>@elseif ($quote->client_views) · Vista por el cliente ({{ $quote->client_views }})@endif
                                     @if ($quote->sent_at) · Enviada {{ fecha($quote->sent_at) }}@endif
                                     @if ($quote->accepted_at) · Aceptada {{ fecha($quote->accepted_at) }}@endif
                                     · {{ $quote->creator->name }}

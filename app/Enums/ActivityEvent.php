@@ -23,6 +23,8 @@ enum ActivityEvent: string
     case QuoteRejected = 'quote_rejected';
     case QuoteReplaced = 'quote_replaced';
     case QuoteDeleted = 'quote_deleted';
+    case QuoteViewed = 'quote_viewed';
+    case QuoteClientResponse = 'quote_client_response';
     case PaymentRegistered = 'payment_registered';
     case PaymentUpdated = 'payment_updated';
     case PaymentDeleted = 'payment_deleted';
@@ -57,6 +59,8 @@ enum ActivityEvent: string
             self::QuoteRejected => 'Cotización rechazada',
             self::QuoteReplaced => 'Cotización reemplazada',
             self::QuoteDeleted => 'Cotización eliminada',
+            self::QuoteViewed => 'Cotización vista por el cliente',
+            self::QuoteClientResponse => 'Respuesta del cliente',
             self::PaymentRegistered => 'Pago registrado',
             self::PaymentUpdated => 'Pago editado',
             self::PaymentDeleted => 'Pago eliminado',
@@ -81,7 +85,7 @@ enum ActivityEvent: string
             self::StageChanged => 'arrows',
             self::CensusDateChanged => 'calendar',
             self::QuoteCreated, self::QuoteUpdated, self::QuoteIssued, self::QuoteSent, self::QuoteAccepted,
-            self::QuoteRejected, self::QuoteReplaced, self::QuoteDeleted => 'document',
+            self::QuoteRejected, self::QuoteReplaced, self::QuoteDeleted, self::QuoteViewed, self::QuoteClientResponse => 'document',
             self::PaymentRegistered, self::PaymentUpdated, self::PaymentDeleted => 'cash',
             self::TaskCreated, self::TaskCompleted, self::TaskCancelled, self::TaskReopened => 'check',
             self::CommentAdded => 'chat',
@@ -95,7 +99,7 @@ enum ActivityEvent: string
             self::ClientDeleted, self::RanchDeleted, self::OpportunityDeleted, self::QuoteDeleted,
             self::PaymentDeleted, self::QuoteRejected, self::TaskCancelled => 'bg-rose-100 text-rose-600',
             self::QuoteAccepted, self::PaymentRegistered, self::TaskCompleted => 'bg-emerald-100 text-emerald-700',
-            self::StageChanged, self::CensusDateChanged => 'bg-blue-100 text-blue-700',
+            self::StageChanged, self::CensusDateChanged, self::QuoteViewed, self::QuoteClientResponse => 'bg-blue-100 text-blue-700',
             self::CommentAdded => 'bg-amber-100 text-amber-700',
             default => 'bg-slate-100 text-slate-600',
         };

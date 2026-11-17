@@ -14,6 +14,7 @@ use App\Services\DuplicateDetector;
 use App\Services\Pricing\PricingException;
 use App\Services\Pricing\QuoteCalculator;
 use App\Services\QuoteService;
+use App\Support\BusinessDays;
 use App\Support\Phone;
 use Closure;
 use Illuminate\Support\Facades\Auth;
@@ -124,7 +125,7 @@ class Builder extends Component
         $service = app(QuoteService::class);
         $current = PriceList::current();
         $this->issued_at = today()->toDateString();
-        $this->valid_until = today()->addDays($current->validity_days)->toDateString();
+        $this->valid_until = BusinessDays::add(today(), $current->validity_days)->toDateString();
         $this->payment_terms = (string) $current->payment_terms;
         $this->state_id = (string) (MexicanState::where('name', 'Nuevo León')->value('id') ?? '');
 
@@ -148,7 +149,7 @@ class Builder extends Component
             $this->mode = request('revisar') ? 'revision' : 'duplicate';
             $this->fillInputs($service->inputsFrom($base, withExceptions: $this->mode === 'revision'));
             $this->issued_at = today()->toDateString();
-            $this->valid_until = today()->addDays($current->validity_days)->toDateString();
+            $this->valid_until = BusinessDays::add(today(), $current->validity_days)->toDateString();
             $this->useSelection($base->opportunity, keepOpportunity: $this->mode === 'revision' || ! in_array($base->opportunity->stage, [PipelineStage::Lost, PipelineStage::CensusDone], true));
 
             return;

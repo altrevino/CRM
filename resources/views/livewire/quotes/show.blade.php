@@ -24,10 +24,12 @@
             </div>
         </x-slot:meta>
         <x-slot:actions>
-            <a href="{{ route('quotes.pdf', $q) }}" class="btn-primary" data-testid="pdf-link"><x-icon name="download" class="size-4" /> Descargar PDF</a>
-            @if ($client->phone)
-                <a href="{{ $client->whatsappUrl() }}" target="_blank" rel="noopener" class="btn bg-emerald-600 text-white shadow-sm hover:bg-emerald-700" title="Abrir chat de WhatsApp (adjunta el PDF descargado)"><x-icon name="whatsapp" class="size-4" /> WhatsApp</a>
+            @if ($q->isShareable())
+                @php $publicUrl = $q->publicUrl(); @endphp
+                <a href="{{ $q->whatsappShareUrl() }}" target="_blank" rel="noopener" wire:click="sharedByWhatsapp" class="btn bg-emerald-600 text-white shadow-sm hover:bg-emerald-700" title="Abre WhatsApp con el mensaje y el link listos"><x-icon name="whatsapp" class="size-4" /> Enviar link</a>
+                <button type="button" x-data x-on:click="navigator.clipboard.writeText(@js($publicUrl)).then(() => $dispatch('notify', { message: 'Link copiado' }))" class="btn-secondary"><x-icon name="external" class="size-4" /> Copiar link</button>
             @endif
+            <a href="{{ route('quotes.pdf', $q) }}" class="btn-secondary" data-testid="pdf-link"><x-icon name="download" class="size-4" /> PDF</a>
         </x-slot:actions>
     </x-page-header>
 
@@ -88,6 +90,46 @@
                 </dl>
                 @if ($q->payment_terms)<div class="mt-4 text-sm"><p class="text-slate-500">Condiciones de pago</p><p class="whitespace-pre-line">{{ $q->payment_terms }}</p></div>@endif
                 @if ($q->observations)<div class="mt-3 text-sm"><p class="text-slate-500">Observaciones (PDF)</p><p class="whitespace-pre-line">{{ $q->observations }}</p></div>@endif
+            </section>
+
+            {{-- Link para el cliente --}}
+            <section class="card p-5">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h2 class="font-semibold text-slate-900">Link para el cliente</h2>
+                    @if ($q->isShareable())
+                        <a href="{{ $publicUrl }}" target="_blank" rel="noopener" class="text-sm font-medium text-brand-700 hover:underline">Ver como cliente <x-icon name="external" class="inline size-3.5" /></a>
+                    @endif
+                </div>
+                @if (! $q->isShareable())
+                    <p class="mt-2 text-sm text-slate-500">Emite la cotización para generar su link. Los borradores no se comparten porque sus precios todavía pueden cambiar.</p>
+                @else
+                    <p class="mt-2 truncate rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs text-slate-600 ring-1 ring-slate-200">{{ $publicUrl }}</p>
+                    <dl class="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+                        <div><dt class="text-slate-500">Vistas del cliente</dt><dd class="font-medium" data-testid="client-views">
+                            @if ($q->client_views)
+                                {{ $q->client_views }} {{ $q->client_views === 1 ? 'vez' : 'veces' }} · primera {{ fecha_hora($q->client_first_viewed_at) }}{{ $q->client_views > 1 ? ' · última '.fecha_hora($q->client_last_viewed_at) : '' }}
+                            @else
+                                Aún no la abre
+                            @endif
+                        </dd></div>
+                        <div><dt class="text-slate-500">Respuesta</dt><dd class="font-medium">
+                            @if ($q->client_response === 'aceptada')
+                                <span class="text-emerald-700">Aceptada por {{ $q->client_responded_by }}</span> · {{ fecha_hora($q->client_responded_at) }}
+                            @elseif ($q->client_response === 'rechazada')
+                                <span class="text-rose-700">Rechazada</span> · {{ fecha_hora($q->client_responded_at) }}
+                                @if ($q->client_response_reason)<span class="block text-slate-600">Motivo: {{ \App\Models\Quote::REJECT_REASONS[$q->client_response_reason] ?? $q->client_response_reason }}</span>@endif
+                                @if ($q->client_response_comment)<span class="block whitespace-pre-line text-slate-600">“{{ $q->client_response_comment }}”</span>@endif
+                            @elseif ($q->clientCanRespond())
+                                Pendiente · puede aceptar o rechazar hasta el {{ fecha($q->valid_until) }}
+                            @else
+                                —
+                            @endif
+                        </dd></div>
+                    </dl>
+                    @if ($q->client_response)
+                        <p class="mt-2 text-xs text-slate-400">Constancia: IP {{ $q->client_response_ip ?? '—' }} · {{ \Illuminate\Support\Str::limit($q->client_response_agent ?? '', 90) }}</p>
+                    @endif
+                @endif
             </section>
 
             {{-- Notas internas --}}

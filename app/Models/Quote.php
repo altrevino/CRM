@@ -6,6 +6,7 @@ use App\Enums\QuoteStatus;
 use App\Models\Concerns\HasCreator;
 use App\Services\Pricing\QuoteCalculator;
 use App\Support\Money;
+use App\Support\Phone;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -63,6 +64,7 @@ class Quote extends Model
         'logistics_amount' => 0,
         'travel_expenses' => 0,
         'discount_amount' => 0,
+        'client_views' => 0,
     ];
 
     protected function casts(): array
@@ -94,6 +96,10 @@ class Quote extends Model
             'discount_value' => 'decimal:2',
             'discount_base' => 'decimal:2',
             'discount_amount' => 'decimal:2',
+            'client_first_viewed_at' => 'datetime',
+            'client_last_viewed_at' => 'datetime',
+            'client_views' => 'integer',
+            'client_responded_at' => 'datetime',
         ];
     }
 
@@ -170,6 +176,52 @@ class Quote extends Model
     public function pricingLabel(): string
     {
         return $this->pricingVersion() ? 'Tarifa v'.$this->pricingVersion() : 'Previa al tarifario';
+    }
+
+    // ------------------------------------------------------------ Link público
+
+    /** Motivos de rechazo que ofrece la página pública. */
+    public const REJECT_REASONS = [
+        'precio' => 'Precio',
+        'fecha' => 'Fecha del servicio',
+        'pospone' => 'Pospongo el censo',
+        'otro_proveedor' => 'Elegí otro proveedor',
+        'otro' => 'Otro',
+    ];
+
+    /** Los borradores no se comparten: sus precios todavía pueden cambiar. */
+    public function isShareable(): bool
+    {
+        return $this->status !== QuoteStatus::Draft;
+    }
+
+    /** URL pública (genera el código la primera vez). */
+    public function publicUrl(): string
+    {
+        if (! $this->public_token) {
+            $this->forceFill(['public_token' => Str::random(40)])->saveQuietly();
+        }
+
+        return route('public.quote', $this->public_token);
+    }
+
+    /** Mensaje de WhatsApp con el link, dirigido al teléfono del cliente si lo tiene. */
+    public function whatsappShareUrl(): string
+    {
+        $client = $this->opportunity->ranch->client;
+        $text = 'Hola '.Str::before(trim($client->name), ' ').', te comparto la cotización '.$this->number
+            .' del censo térmico de '.$this->opportunity->ranch->name.'. Aquí puedes ver el detalle y aceptarla: '.$this->publicUrl();
+        $base = Phone::whatsappUrl($client->phone) ?? 'https://wa.me/';
+
+        return $base.'?text='.rawurlencode($text);
+    }
+
+    /** El cliente puede aceptar o rechazar desde el link: emitida o enviada, vigente y sin respuesta previa. */
+    public function clientCanRespond(): bool
+    {
+        return in_array($this->status, [QuoteStatus::Issued, QuoteStatus::Sent], true)
+            && ! $this->isExpired()
+            && $this->client_response === null;
     }
 
     /** Frase para avisos: «la Tarifa v1» o «precios previos al tarifario». */

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\PublicQuoteController;
 use App\Http\Controllers\QuotePdfController;
 use App\Livewire;
 use Illuminate\Support\Facades\Route;
@@ -8,6 +9,15 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'create'])->name('login');
     Route::post('/login', [LoginController::class, 'store'])->name('login.store');
+});
+
+// Cotización pública (link para WhatsApp). Todo vive bajo /c/ para que Cloudflare Access
+// pueda dejar pasar solo esta ruta; los archivos de la página están en public/c/assets.
+Route::prefix('c')->middleware('throttle:60,1')->group(function () {
+    Route::get('/{token}', [PublicQuoteController::class, 'show'])->name('public.quote');
+    Route::get('/{token}/pdf', [PublicQuoteController::class, 'pdf'])->name('public.quote.pdf');
+    Route::post('/{token}/aceptar', [PublicQuoteController::class, 'accept'])->middleware('throttle:10,1')->name('public.quote.accept');
+    Route::post('/{token}/rechazar', [PublicQuoteController::class, 'reject'])->middleware('throttle:10,1')->name('public.quote.reject');
 });
 
 Route::post('/logout', [LoginController::class, 'destroy'])->middleware('auth')->name('logout');

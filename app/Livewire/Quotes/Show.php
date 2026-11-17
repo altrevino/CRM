@@ -143,6 +143,15 @@ class Show extends Component
         $this->run(fn () => $service->accept($this->quote), 'Cotización aceptada');
     }
 
+    /** Al abrir WhatsApp con el link, una cotización emitida pasa a Enviada. */
+    public function sharedByWhatsapp(QuoteService $service): void
+    {
+        $this->authorize('adjust', $this->quote);
+        if ($this->quote->status === QuoteStatus::Issued) {
+            $this->run(fn () => $service->markSent($this->quote), 'Marcada como enviada');
+        }
+    }
+
     public function reject(QuoteService $service): void
     {
         $this->authorize('adjust', $this->quote);
